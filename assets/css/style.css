@@ -13,7 +13,27 @@
   --glow: 0 0 16px rgba(95,224,255,.55);
   --font: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }
-
+.mic-btn{
+  background:transparent;
+  border:1px solid var(--cyan-dim);
+  color:var(--cyan);
+  font-size:14px;
+  padding:9px 12px;
+  border-radius:4px;
+  cursor:pointer;
+  transition:.2s;
+  line-height:1;
+}
+.mic-btn:hover{ border-color:var(--cyan); box-shadow:var(--glow); }
+.mic-btn.listening{
+  border-color:var(--red);
+  color:var(--red);
+  animation:mic-pulse 1s ease-in-out infinite;
+}
+@keyframes mic-pulse{
+  0%,100%{ box-shadow:0 0 6px rgba(255,92,92,.4); }
+  50%{ box-shadow:0 0 18px rgba(255,92,92,.9); }
+}
 *{box-sizing:border-box;}
 
 html,body{
