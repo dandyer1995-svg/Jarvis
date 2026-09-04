@@ -1,16 +1,16 @@
 :root{
-  --bg-0:#03080c;
-  --bg-1:#060f16;
-  --panel:rgba(10,26,36,.55);
-  --panel-border:rgba(93,214,255,.25);
-  --cyan:#5fe0ff;
-  --cyan-soft:#2f9fc4;
-  --cyan-dim:#123544;
-  --amber:#ffb454;
-  --red:#ff5c5c;
-  --text:#d7f3ff;
-  --text-dim:#6f93a3;
-  --glow: 0 0 16px rgba(95,224,255,.55);
+  --bg-0:#0d0a10;
+  --bg-1:#1a1220;
+  --panel:rgba(28,20,24,.55);
+  --panel-border:rgba(255,157,92,.22);
+  --cyan:#ff9d5c;
+  --cyan-soft:#d9703f;
+  --cyan-dim:#3a2418;
+  --amber:#ffcf7a;
+  --red:#ff6f61;
+  --text:#f7e6d8;
+  --text-dim:#a8876f;
+  --glow: 0 0 16px rgba(255,157,92,.55);
   --font: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
 }
 .mic-btn{
@@ -43,7 +43,7 @@
 .todo-list li{
   display:flex; align-items:center; gap:8px;
   padding:4px 0;
-  border-bottom:1px solid rgba(95,224,255,.08);
+  border-bottom:1px solid rgba(255,157,92,.08);
 }
 .todo-list li.done{ color:var(--text-dim); text-decoration:line-through; }
 .todo-check{
@@ -126,7 +126,7 @@ html,body{
 .status-dot{
   width:9px; height:9px; border-radius:50%;
   background:var(--cyan);
-  box-shadow:0 0 8px 2px rgba(95,224,255,.8);
+  box-shadow:0 0 8px 2px rgba(255,157,92,.8);
   animation:pulse 2s ease-in-out infinite;
 }
 .clock-block{ text-align:right; line-height:1.3;}
@@ -183,7 +183,7 @@ html,body{
   fill:none; stroke:var(--cyan); stroke-width:8; stroke-linecap:round;
   stroke-dasharray: 326.7256; /* 2*pi*52 */
   stroke-dashoffset: 326.7256;
-  filter:drop-shadow(0 0 6px rgba(95,224,255,.7));
+  filter:drop-shadow(0 0 6px rgba(255,157,92,.7));
   transition:stroke-dashoffset 1s ease;
 }
 .gauge-label{
@@ -207,7 +207,7 @@ html,body{
 .bar-fill{
   height:100%; width:0%;
   background:linear-gradient(90deg, var(--cyan-soft), var(--cyan));
-  box-shadow:0 0 8px rgba(95,224,255,.6);
+  box-shadow:0 0 8px rgba(255,157,92,.6);
   transition:width .8s ease;
 }
 
@@ -252,7 +252,7 @@ html,body{
   stroke:var(--cyan);
   stroke-width:3;
   stroke-dasharray:60 400;
-  filter:drop-shadow(0 0 8px rgba(95,224,255,.9));
+  filter:drop-shadow(0 0 8px rgba(255,157,92,.9));
   transform-origin:200px 200px;
   animation:spin 6s linear infinite;
 }
@@ -264,7 +264,7 @@ html,body{
   position:absolute;
   width:46%; height:46%;
   border-radius:50%;
-  background:radial-gradient(circle, rgba(95,224,255,.9) 0%, rgba(95,224,255,.25) 45%, transparent 75%);
+  background:radial-gradient(circle, rgba(255,157,92,.9) 0%, rgba(255,157,92,.25) 45%, transparent 75%);
   filter:blur(2px);
   animation:corepulse 3s ease-in-out infinite;
 }
@@ -273,7 +273,7 @@ html,body{
 }
 .core-id-line1{
   display:block; font-size:15px; letter-spacing:4px; font-weight:700;
-  color:#eafcff; text-shadow:0 0 10px rgba(95,224,255,.9);
+  color:#fff2e0; text-shadow:0 0 10px rgba(255,157,92,.9);
 }
 .core-id-line2{
   display:block; font-size:10px; letter-spacing:2px; color:var(--cyan-soft);
@@ -318,7 +318,7 @@ html,body{
   display:inline-block;
   padding:8px 12px;
   border-radius:4px;
-  background:rgba(95,224,255,.06);
+  background:rgba(255,157,92,.06);
   border:1px solid var(--cyan-dim);
 }
 .msg-ai{ align-self:flex-start; }
@@ -346,7 +346,7 @@ html,body{
   font-size:13px;
   outline:none;
 }
-#chatInput:focus{ border-color:var(--cyan); box-shadow:0 0 8px rgba(95,224,255,.4); }
+#chatInput:focus{ border-color:var(--cyan); box-shadow:0 0 8px rgba(255,157,92,.4); }
 .send-btn{
   background:transparent;
   border:1px solid var(--cyan);
