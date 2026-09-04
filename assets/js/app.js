@@ -104,12 +104,20 @@
     chatLog.scrollTop = chatLog.scrollHeight;
   }
 
-  // Placeholder response generator — replace with a real API call.
+  // Placeholder response generator — replace with a real call to a model,
+  // passing JARVIS_PERSONA.SYSTEM_PROMPT (see persona.js) as the system
+  // prompt so the live responses keep this same voice.
+  function pickLine(lines) {
+    return lines[Math.floor(Math.random() * lines.length)];
+  }
+
   function sendToAssistant(message) {
     return new Promise((resolve) => {
       const delay = 500 + Math.random() * 700;
       setTimeout(() => {
-        resolve(`Acknowledged: "${message}". (Connect sendToAssistant() in app.js to a real model to get live responses.)`);
+        const persona = window.JARVIS_PERSONA;
+        const ack = pickLine(persona.ACK);
+        resolve(`${ack} ${persona.FALLBACK_SUFFIX}`);
       }, delay);
     });
   }
