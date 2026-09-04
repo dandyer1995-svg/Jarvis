@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS // AI Interface</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div class="app">
+
+  <!-- ===== HEADER ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◈</span>
+      <span class="brand-name">J.A.R.V.I.S.</span>
+      <span class="brand-sub">AI INTERFACE</span>
+    </div>
+    <div class="topbar-center">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">SYSTEMS ONLINE</span>
+    </div>
+    <div class="clock-block">
+      <div id="clockTime">00:00:00</div>
+      <div id="clockDate">--- -- ----</div>
+    </div>
+  </header>
+
+  <!-- ===== MAIN GRID ===== -->
+  <main class="grid">
+
+    <!-- LEFT: SYSTEM STATUS -->
+    <section class="panel col-left">
+      <h2 class="panel-title">SYSTEM STATUS</h2>
+
+      <div class="gauge-row">
+        <div class="gauge" data-metric="cpu">
+          <svg viewBox="0 0 120 120" class="gauge-ring">
+            <circle cx="60" cy="60" r="52" class="gauge-track"/>
+            <circle cx="60" cy="60" r="52" class="gauge-fill"/>
+          </svg>
+          <div class="gauge-label">
+            <span class="gauge-value">--</span>
+            <span class="gauge-unit">%</span>
+            <span class="gauge-name">CPU</span>
+          </div>
+        </div>
+
+        <div class="gauge" data-metric="mem">
+          <svg viewBox="0 0 120 120" class="gauge-ring">
+            <circle cx="60" cy="60" r="52" class="gauge-track"/>
+            <circle cx="60" cy="60" r="52" class="gauge-fill"/>
+          </svg>
+          <div class="gauge-label">
+            <span class="gauge-value">--</span>
+            <span class="gauge-unit">%</span>
+            <span class="gauge-name">MEM</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bar-metrics">
+        <div class="bar-metric">
+          <div class="bar-metric-head"><span>NETWORK I/O</span><span id="netVal">-- KB/s</span></div>
+          <div class="bar-track"><div class="bar-fill" id="netBar"></div></div>
+        </div>
+        <div class="bar-metric">
+          <div class="bar-metric-head"><span>DISK</span><span id="diskVal">-- %</span></div>
+          <div class="bar-track"><div class="bar-fill" id="diskBar"></div></div>
+        </div>
+        <div class="bar-metric">
+          <div class="bar-metric-head"><span>LATENCY</span><span id="latVal">-- ms</span></div>
+          <div class="bar-track"><div class="bar-fill" id="latBar"></div></div>
+        </div>
+      </div>
+
+      <h2 class="panel-title panel-title-spaced">ACTIVE MODULES</h2>
+      <ul class="module-list" id="moduleList">
+        <li><span class="mod-dot ok"></span> Speech Recognition</li>
+        <li><span class="mod-dot ok"></span> Language Core</li>
+        <li><span class="mod-dot ok"></span> Memory Store</li>
+        <li><span class="mod-dot warn"></span> Vision Module</li>
+        <li><span class="mod-dot off"></span> External Sensors</li>
+      </ul>
+    </section>
+
+    <!-- CENTER: CORE + CHAT -->
+    <section class="col-center">
+
+      <div class="core-wrap">
+        <div class="core">
+          <svg viewBox="0 0 400 400" class="core-svg">
+            <circle cx="200" cy="200" r="188" class="ring ring-outer"/>
+            <circle cx="200" cy="200" r="160" class="ring ring-mid"/>
+            <circle cx="200" cy="200" r="130" class="ring ring-dash"/>
+            <circle cx="200" cy="200" r="100" class="ring ring-sweep"/>
+            <g class="tick-group">
+              <!-- ticks generated in JS -->
+            </g>
+          </svg>
+          <div class="core-center">
+            <div class="core-glow"></div>
+            <div class="core-id">
+              <span class="core-id-line1">JARVIS</span>
+              <span class="core-id-line2" id="coreState">LISTENING</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="chat-panel">
+        <h2 class="panel-title">CONSOLE</h2>
+        <div class="chat-log" id="chatLog">
+          <div class="msg msg-ai">
+            <span class="msg-tag">JARVIS</span>
+            <span class="msg-text">Good to see you. All systems are nominal. How can I help?</span>
+          </div>
+        </div>
+        <form class="chat-input-row" id="chatForm">
+          <span class="prompt-caret">&gt;</span>
+          <input type="text" id="chatInput" autocomplete="off" placeholder="Type a command or message...">
+          <button type="submit" class="send-btn">SEND</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- RIGHT: ACTIVITY / LOG -->
+    <section class="panel col-right">
+      <h2 class="panel-title">ACTIVITY LOG</h2>
+      <ul class="log-list" id="logList"></ul>
+
+      <h2 class="panel-title panel-title-spaced">ENVIRONMENT</h2>
+      <div class="env-grid">
+        <div class="env-item">
+          <span class="env-label">LOCATION</span>
+          <span class="env-value">Local Node</span>
+        </div>
+        <div class="env-item">
+          <span class="env-label">UPTIME</span>
+          <span class="env-value" id="uptimeVal">00:00:00</span>
+        </div>
+        <div class="env-item">
+          <span class="env-label">MODEL</span>
+          <span class="env-value">Claude</span>
+        </div>
+        <div class="env-item">
+          <span class="env-label">SECURITY</span>
+          <span class="env-value ok-text">SECURE</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script src="assets/js/app.js"></script>
+</body>
+</html>
