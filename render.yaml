@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: jarvis-dashboard
+    runtime: node
+    plan: free
+    branch: claude/ai-interface-dashboard-gr8tag
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5

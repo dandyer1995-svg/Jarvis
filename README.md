@@ -30,9 +30,29 @@ system prompt.
 Without `ANTHROPIC_API_KEY` set, the dashboard still runs — the chat falls
 back to a stock in-voice line telling you the model isn't connected.
 
+## Deploying it (so you can open it from any device, phone included)
+
+This repo includes a `render.yaml` blueprint for [Render](https://render.com):
+
+1. Sign up / log in at render.com.
+2. Click **New** → **Blueprint**, connect your GitHub account, and select
+   the `Jarvis` repo (branch `claude/ai-interface-dashboard-gr8tag`).
+   Render reads `render.yaml` and configures the service automatically.
+3. When prompted for the `ANTHROPIC_API_KEY` environment variable, paste
+   your key directly into Render's dashboard — it's entered there, not in
+   any file that gets committed.
+4. Click **Apply** / **Deploy**. Render builds and starts the service.
+5. Once it's live, Render gives you a public URL
+   (`https://jarvis-dashboard-xxxx.onrender.com`) — open that from any
+   browser, including your phone's.
+
+The free Render plan spins the service down after periods of inactivity,
+so the first request after a while can take ~30-60 seconds to wake it up.
+
 ## Project structure
 
 - `index.html`, `assets/css/style.css`, `assets/js/app.js` — the dashboard UI
 - `assets/js/persona.js` — JARVIS's voice (system prompt + stock lines),
   shared by the browser and `server.js`
 - `server.js` — static file server + `/api/chat` proxy to the Anthropic API
+- `render.yaml` — one-click deploy config for Render
