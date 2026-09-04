@@ -34,6 +34,25 @@
   0%,100%{ box-shadow:0 0 6px rgba(255,92,92,.4); }
   50%{ box-shadow:0 0 18px rgba(255,92,92,.9); }
 }
+
+.todo-list{
+  list-style:none; margin:0; padding:0;
+  font-size:12px;
+  display:flex; flex-direction:column; gap:6px;
+}
+.todo-list li{
+  display:flex; align-items:center; gap:8px;
+  padding:4px 0;
+  border-bottom:1px solid rgba(95,224,255,.08);
+}
+.todo-list li.done{ color:var(--text-dim); text-decoration:line-through; }
+.todo-check{
+  width:12px; height:12px; flex:none;
+  border:1px solid var(--cyan-dim); border-radius:3px;
+  display:inline-block;
+}
+.todo-check.checked{ background:var(--cyan); border-color:var(--cyan); box-shadow:var(--glow); }
+.todo-empty{ color:var(--text-dim); font-style:italic; border-bottom:none; }
 *{box-sizing:border-box;}
 
 html,body{
