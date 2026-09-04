@@ -3,163 +3,77 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>JARVIS // AI Interface</title>
+<title>Barney</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
 
-<div class="scanlines"></div>
-<div class="vignette"></div>
-
 <div class="app">
 
-  <!-- ===== HEADER ===== -->
   <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">◈</span>
-      <span class="brand-name">J.A.R.V.I.S.</span>
-      <span class="brand-sub">AI INTERFACE</span>
-    </div>
-    <div class="topbar-center">
-      <span class="status-dot" id="statusDot"></span>
-      <span id="statusText">SYSTEMS ONLINE</span>
-    </div>
-    <div class="clock-block">
-      <div id="clockTime">00:00:00</div>
-      <div id="clockDate">--- -- ----</div>
+    <span class="brand">Barney</span>
+    <div class="topbar-meta">
+      <span class="date-label" id="dateLabel"></span>
+      <span class="status-pill" id="statusPill">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Connecting…</span>
+      </span>
     </div>
   </header>
 
-  <!-- ===== MAIN GRID ===== -->
-  <main class="grid">
+  <main class="layout">
 
-    <!-- LEFT: SYSTEM STATUS -->
-    <section class="panel col-left">
-      <h2 class="panel-title">SYSTEM STATUS</h2>
-
-      <div class="gauge-row">
-        <div class="gauge" data-metric="cpu">
-          <svg viewBox="0 0 120 120" class="gauge-ring">
-            <circle cx="60" cy="60" r="52" class="gauge-track"/>
-            <circle cx="60" cy="60" r="52" class="gauge-fill"/>
-          </svg>
-          <div class="gauge-label">
-            <span class="gauge-value">--</span>
-            <span class="gauge-unit">%</span>
-            <span class="gauge-name">CPU</span>
-          </div>
-        </div>
-
-        <div class="gauge" data-metric="mem">
-          <svg viewBox="0 0 120 120" class="gauge-ring">
-            <circle cx="60" cy="60" r="52" class="gauge-track"/>
-            <circle cx="60" cy="60" r="52" class="gauge-fill"/>
-          </svg>
-          <div class="gauge-label">
-            <span class="gauge-value">--</span>
-            <span class="gauge-unit">%</span>
-            <span class="gauge-name">MEM</span>
-          </div>
+    <section class="panel chat-panel">
+      <div class="chat-log" id="chatLog">
+        <div class="msg msg-ai">
+          <span class="msg-tag">Barney</span>
+          <p class="msg-text">Good to see you. Everything's ready — what can I help with?</p>
         </div>
       </div>
-
-      <div class="bar-metrics">
-        <div class="bar-metric">
-          <div class="bar-metric-head"><span>NETWORK I/O</span><span id="netVal">-- KB/s</span></div>
-          <div class="bar-track"><div class="bar-fill" id="netBar"></div></div>
-        </div>
-        <div class="bar-metric">
-          <div class="bar-metric-head"><span>DISK</span><span id="diskVal">-- %</span></div>
-          <div class="bar-track"><div class="bar-fill" id="diskBar"></div></div>
-        </div>
-        <div class="bar-metric">
-          <div class="bar-metric-head"><span>LATENCY</span><span id="latVal">-- ms</span></div>
-          <div class="bar-track"><div class="bar-fill" id="latBar"></div></div>
-        </div>
-      </div>
-
-      <h2 class="panel-title panel-title-spaced">ACTIVE MODULES</h2>
-      <ul class="module-list" id="moduleList">
-        <li><span class="mod-dot ok"></span> Speech Recognition</li>
-        <li><span class="mod-dot ok"></span> Language Core</li>
-        <li><span class="mod-dot ok"></span> Memory Store</li>
-        <li><span class="mod-dot warn"></span> Vision Module</li>
-        <li><span class="mod-dot off"></span> External Sensors</li>
-      </ul>
-
-      <h2 class="panel-title panel-title-spaced">TO-DO LIST</h2>
-      <ul class="todo-list" id="todoList">
-        <li class="todo-empty">Nothing on the list yet.</li>
-      </ul>
+      <form class="chat-input-row" id="chatForm">
+        <input type="text" id="chatInput" autocomplete="off" placeholder="Message Barney…">
+        <button type="button" id="micBtn" class="mic-btn" aria-label="Voice input">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="2" width="6" height="12" rx="3"></rect>
+            <path d="M5 11a7 7 0 0 0 14 0"></path>
+            <line x1="12" y1="18" x2="12" y2="22"></line>
+            <line x1="8" y1="22" x2="16" y2="22"></line>
+          </svg>
+        </button>
+        <button type="submit" class="send-btn">Send</button>
+      </form>
     </section>
 
-    <!-- CENTER: CORE + CHAT -->
-    <section class="col-center">
+    <aside class="rail">
 
-      <div class="core-wrap">
-        <div class="core">
-          <svg viewBox="0 0 400 400" class="core-svg">
-            <circle cx="200" cy="200" r="188" class="ring ring-outer"/>
-            <circle cx="200" cy="200" r="160" class="ring ring-mid"/>
-            <circle cx="200" cy="200" r="130" class="ring ring-dash"/>
-            <circle cx="200" cy="200" r="100" class="ring ring-sweep"/>
-            <g class="tick-group">
-              <!-- ticks generated in JS -->
-            </g>
-          </svg>
-          <div class="core-center">
-            <div class="core-glow"></div>
-            <div class="core-id">
-              <span class="core-id-line1">JARVIS</span>
-              <span class="core-id-line2" id="coreState">LISTENING</span>
-            </div>
-          </div>
+      <section class="panel card">
+        <div class="card-head">
+          <h2>To-do</h2>
+          <span class="card-count" id="todoCount"></span>
         </div>
-      </div>
+        <ul class="todo-list" id="todoList">
+          <li class="todo-empty">Nothing on the list yet.</li>
+        </ul>
+      </section>
 
-      <div class="chat-panel">
-        <h2 class="panel-title">CONSOLE</h2>
-        <div class="chat-log" id="chatLog">
-          <div class="msg msg-ai">
-            <span class="msg-tag">JARVIS</span>
-            <span class="msg-text">Good to see you, sir. All systems are nominal. How may I be of service?</span>
-          </div>
-        </div>
-        <form class="chat-input-row" id="chatForm">
-          <span class="prompt-caret">&gt;</span>
-          <input type="text" id="chatInput" autocomplete="off" placeholder="Type a command or message...">
-          <button type="button" id="micBtn" class="mic-btn" aria-label="Voice input">🎤</button>
-          <button type="submit" class="send-btn">SEND</button>
-        </form>
-      </div>
-    </section>
+      <section class="panel card card-glow">
+        <div class="card-head"><h2>Activity</h2></div>
+        <ul class="log-list" id="logList"></ul>
+      </section>
 
-    <!-- RIGHT: ACTIVITY / LOG -->
-    <section class="panel col-right">
-      <h2 class="panel-title">ACTIVITY LOG</h2>
-      <ul class="log-list" id="logList"></ul>
+      <section class="panel card">
+        <div class="card-head"><h2>Environment</h2></div>
+        <div class="env-grid">
+          <div class="env-row"><span class="env-label">Model</span><span class="env-value" id="envModel">—</span></div>
+          <div class="env-row"><span class="env-label">Voice input</span><span class="env-value" id="envVoice">—</span></div>
+          <div class="env-row"><span class="env-label">Data</span><span class="env-value" id="envData">—</span></div>
+        </div>
+      </section>
 
-      <h2 class="panel-title panel-title-spaced">ENVIRONMENT</h2>
-      <div class="env-grid">
-        <div class="env-item">
-          <span class="env-label">LOCATION</span>
-          <span class="env-value">Local Node</span>
-        </div>
-        <div class="env-item">
-          <span class="env-label">UPTIME</span>
-          <span class="env-value" id="uptimeVal">00:00:00</span>
-        </div>
-        <div class="env-item">
-          <span class="env-label">MODEL</span>
-          <span class="env-value">Claude</span>
-        </div>
-        <div class="env-item">
-          <span class="env-label">SECURITY</span>
-          <span class="env-value ok-text">SECURE</span>
-        </div>
-      </div>
-    </section>
-
+    </aside>
   </main>
 </div>
 
