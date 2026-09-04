@@ -1,4 +1,4 @@
-// Postgres connection + persistence for Barney's to-do list.
+// Postgres connection + persistence for JARVIS's to-do list.
 // Requires a DATABASE_URL environment variable pointing at a Postgres
 // database (e.g. a free Render PostgreSQL instance). Without it, the
 // to-do endpoints will fail — everything else in the app still works.
