@@ -11,3 +11,5 @@ services:
         sync: false
       - key: ANTHROPIC_MODEL
         value: claude-sonnet-5
+      - key: DATABASE_URL
+        sync: false
