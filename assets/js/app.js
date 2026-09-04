@@ -144,8 +144,81 @@
 
     const reply = await sendToAssistant(text);
     appendMessage('ai', reply);
+    speak(reply);
     coreState.textContent = 'LISTENING';
   });
+
+  // ---------- Voice: JARVIS speaks (text-to-speech) ----------
+  let jarvisVoice = null;
+  function pickVoice() {
+    const voices = speechSynthesis.getVoices();
+    jarvisVoice =
+      voices.find(v => /Daniel|Google UK English Male/i.test(v.name)) ||
+      voices.find(v => v.lang === 'en-GB') ||
+      voices.find(v => v.lang.startsWith('en')) ||
+      voices[0] || null;
+  }
+  if ('speechSynthesis' in window) {
+    speechSynthesis.onvoiceschanged = pickVoice;
+    pickVoice();
+  }
+  function speak(text) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    if (jarvisVoice) utter.voice = jarvisVoice;
+    utter.rate = 1;
+    utter.pitch = 0.85;
+    speechSynthesis.speak(utter);
+  }
+
+  // ---------- Voice: you speak (speech-to-text via mic button) ----------
+  const micBtn = document.getElementById('micBtn');
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let listening = false;
+
+  if (micBtn) {
+    if (!SpeechRecognitionCtor) {
+      micBtn.disabled = true;
+      micBtn.title = 'Speech recognition not supported in this browser (try Chrome or Edge)';
+    } else {
+      recognition = new SpeechRecognitionCtor();
+      recognition.lang = 'en-GB';
+      recognition.continuous = false;
+      recognition.interimResults = false;
+
+      recognition.onstart = () => {
+        listening = true;
+        micBtn.classList.add('listening');
+        coreState.textContent = 'LISTENING';
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        chatInput.value = transcript;
+        chatForm.requestSubmit();
+      };
+
+      recognition.onerror = (event) => {
+        pushLog(`Voice input error: ${event.error}`);
+      };
+
+      recognition.onend = () => {
+        listening = false;
+        micBtn.classList.remove('listening');
+      };
+
+      micBtn.addEventListener('click', () => {
+        if (listening) {
+          recognition.stop();
+        } else {
+          speechSynthesis.cancel(); // stop JARVIS talking before we listen
+          recognition.start();
+        }
+      });
+    }
+  }
 
   // ---------- Boot sequence ----------
   function init() {
