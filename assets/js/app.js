@@ -1,84 +1,43 @@
-// JARVIS-style AI interface dashboard
-// All "live" system numbers below are simulated placeholders — wire buildStatus()
-// and sendToAssistant() up to a real backend/API to make this functional.
+// Barney dashboard front-end.
+// Chat talks to /api/chat (Claude + to-do tools). To-do and activity
+// panels reflect real state — nothing here is simulated.
 
 (function () {
-  const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 52; // matches r=52 in the SVG gauges
+  // ---------- Header: date + connection status ----------
+  const dateLabel = document.getElementById('dateLabel');
+  const statusDot = document.getElementById('statusDot');
+  const statusText = document.getElementById('statusText');
 
-  // ---------- Clock ----------
-  function tickClock() {
+  function tickDate() {
     const now = new Date();
-    document.getElementById('clockTime').textContent =
-      now.toLocaleTimeString('en-US', { hour12: false });
-    document.getElementById('clockDate').textContent =
-      now.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+    dateLabel.textContent = now.toLocaleString('en-GB', {
+      weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+    });
   }
 
-  // ---------- Uptime ----------
-  const bootTime = Date.now();
-  function tickUptime() {
-    const secs = Math.floor((Date.now() - bootTime) / 1000);
-    const h = String(Math.floor(secs / 3600)).padStart(2, '0');
-    const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
-    const s = String(secs % 60).padStart(2, '0');
-    document.getElementById('uptimeVal').textContent = `${h}:${m}:${s}`;
+  async function checkHealth() {
+    try {
+      const res = await fetch('/api/health');
+      if (!res.ok) throw new Error('bad response');
+      const data = await res.json();
+      statusDot.className = 'status-dot online';
+      statusText.textContent = 'Online';
+      document.getElementById('envModel').textContent = data.model || '—';
+      document.getElementById('envData').textContent = data.dbConnected ? 'Connected' : 'Not connected';
+    } catch (err) {
+      statusDot.className = 'status-dot offline';
+      statusText.textContent = 'Offline';
+    }
   }
 
-  // ---------- Gauges (CPU / MEM) ----------
-  function setGauge(metric, percent) {
-    const gauge = document.querySelector(`.gauge[data-metric="${metric}"]`);
-    if (!gauge) return;
-    const fill = gauge.querySelector('.gauge-fill');
-    const value = gauge.querySelector('.gauge-value');
-    const offset = GAUGE_CIRCUMFERENCE * (1 - percent / 100);
-    fill.style.strokeDashoffset = offset;
-    value.textContent = Math.round(percent);
-  }
-
-  // ---------- Bar metrics ----------
-  function setBar(barId, valueId, percent, label) {
-    document.getElementById(barId).style.width = `${percent}%`;
-    document.getElementById(valueId).textContent = label;
-  }
-
-  function randomWalk(prev, min, max, maxStep) {
-    const next = prev + (Math.random() - 0.5) * maxStep;
-    return Math.min(max, Math.max(min, next));
-  }
-
-  let cpu = 32, mem = 54, disk = 61, net = 120, lat = 40;
-
-  function refreshStatus() {
-    cpu = randomWalk(cpu, 8, 92, 14);
-    mem = randomWalk(mem, 20, 85, 6);
-    disk = randomWalk(disk, 40, 80, 3);
-    net = randomWalk(net, 10, 900, 120);
-    lat = randomWalk(lat, 12, 120, 20);
-
-    setGauge('cpu', cpu);
-    setGauge('mem', mem);
-    setBar('diskBar', 'diskVal', disk, `${Math.round(disk)} %`);
-    setBar('netBar', 'netVal', Math.min(100, net / 9), `${Math.round(net)} KB/s`);
-    setBar('latBar', 'latVal', Math.min(100, lat), `${Math.round(lat)} ms`);
-  }
-
-  // ---------- Activity log ----------
-  const logMessages = [
-    'Voice input calibrated.',
-    'Background sync completed.',
-    'Memory index optimized.',
-    'No anomalies detected.',
-    'Session context saved.',
-    'Network handshake stable.',
-    'Idle scan complete.'
-  ];
+  // ---------- Activity feed (real events only) ----------
   const logList = document.getElementById('logList');
   function pushLog(text) {
     const li = document.createElement('li');
-    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
     li.innerHTML = `<span class="log-time">${time}</span>${text}`;
     logList.prepend(li);
-    while (logList.children.length > 12) {
+    while (logList.children.length > 8) {
       logList.removeChild(logList.lastChild);
     }
   }
@@ -87,15 +46,14 @@
   const chatLog = document.getElementById('chatLog');
   const chatForm = document.getElementById('chatForm');
   const chatInput = document.getElementById('chatInput');
-  const coreState = document.getElementById('coreState');
 
   function appendMessage(who, text) {
     const wrap = document.createElement('div');
     wrap.className = `msg msg-${who}`;
     const tag = document.createElement('span');
     tag.className = 'msg-tag';
-    tag.textContent = who === 'ai' ? 'JARVIS' : 'YOU';
-    const body = document.createElement('span');
+    tag.textContent = who === 'ai' ? 'Barney' : 'You';
+    const body = document.createElement('p');
     body.className = 'msg-text';
     body.textContent = text;
     wrap.appendChild(tag);
@@ -112,11 +70,8 @@
   // context. Kept client-side; server.js is stateless between requests.
   const history = [];
 
-  // Calls the /api/chat endpoint in server.js, which forwards to Claude
-  // using JARVIS_PERSONA.SYSTEM_PROMPT. Falls back to a stock persona line
-  // if the server isn't running or ANTHROPIC_API_KEY isn't configured.
   async function sendToAssistant(message) {
-    const persona = window.JARVIS_PERSONA;
+    const persona = window.BARNEY_PERSONA;
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -139,22 +94,25 @@
     if (!text) return;
     appendMessage('user', text);
     chatInput.value = '';
-    coreState.textContent = 'PROCESSING';
-    pushLog(`Command received: "${text}"`);
+    pushLog('Message sent');
 
     const reply = await sendToAssistant(text);
     appendMessage('ai', reply);
     speak(reply);
-    coreState.textContent = 'LISTENING';
+    pushLog('Reply received');
     refreshTodos();
   });
 
-  // ---------- To-Do list ----------
+  // ---------- To-do list ----------
   const todoList = document.getElementById('todoList');
+  const todoCount = document.getElementById('todoCount');
 
   function renderTodos(items) {
     if (!todoList) return;
     todoList.innerHTML = '';
+    const open = items.filter((i) => !i.done).length;
+    todoCount.textContent = open ? `${open} open` : '';
+
     if (!items.length) {
       const li = document.createElement('li');
       li.className = 'todo-empty';
@@ -162,15 +120,33 @@
       todoList.appendChild(li);
       return;
     }
+
     items.forEach((item) => {
       const li = document.createElement('li');
-      if (item.done) li.classList.add('done');
-      const check = document.createElement('span');
+      li.className = 'todo-item' + (item.done ? ' done' : '');
+
+      const check = document.createElement('button');
+      check.type = 'button';
       check.className = 'todo-check' + (item.done ? ' checked' : '');
+      check.setAttribute('aria-label', item.done ? 'Completed' : 'Mark as done');
+      check.textContent = item.done ? '✓' : '';
+      check.disabled = item.done;
+      check.addEventListener('click', () => completeTodo(item));
+
       const label = document.createElement('span');
+      label.className = 'todo-label';
       label.textContent = item.text;
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'todo-delete';
+      del.setAttribute('aria-label', 'Delete');
+      del.textContent = '×';
+      del.addEventListener('click', () => deleteTodo(item));
+
       li.appendChild(check);
       li.appendChild(label);
+      li.appendChild(del);
       todoList.appendChild(li);
     });
   }
@@ -186,11 +162,27 @@
     }
   }
 
-  // ---------- Voice: JARVIS speaks (text-to-speech) ----------
-  let jarvisVoice = null;
+  async function completeTodo(item) {
+    try {
+      await fetch(`/api/todos/${item.id}/complete`, { method: 'POST' });
+      pushLog(`Completed "${item.text}"`);
+      refreshTodos();
+    } catch (err) {}
+  }
+
+  async function deleteTodo(item) {
+    try {
+      await fetch(`/api/todos/${item.id}`, { method: 'DELETE' });
+      pushLog(`Removed "${item.text}"`);
+      refreshTodos();
+    } catch (err) {}
+  }
+
+  // ---------- Voice: Barney speaks (text-to-speech) ----------
+  let barneyVoice = null;
   function pickVoice() {
     const voices = speechSynthesis.getVoices();
-    jarvisVoice =
+    barneyVoice =
       voices.find(v => /Daniel|Google UK English Male/i.test(v.name)) ||
       voices.find(v => v.lang === 'en-GB') ||
       voices.find(v => v.lang.startsWith('en')) ||
@@ -204,17 +196,20 @@
     if (!('speechSynthesis' in window)) return;
     speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
-    if (jarvisVoice) utter.voice = jarvisVoice;
+    if (barneyVoice) utter.voice = barneyVoice;
     utter.rate = 1;
-    utter.pitch = 0.85;
+    utter.pitch = 0.95;
     speechSynthesis.speak(utter);
   }
 
   // ---------- Voice: you speak (speech-to-text via mic button) ----------
   const micBtn = document.getElementById('micBtn');
   const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const envVoice = document.getElementById('envVoice');
   let recognition = null;
   let listening = false;
+
+  if (envVoice) envVoice.textContent = SpeechRecognitionCtor ? 'Ready' : 'Unavailable';
 
   if (micBtn) {
     if (!SpeechRecognitionCtor) {
@@ -229,12 +224,12 @@
       recognition.onstart = () => {
         listening = true;
         micBtn.classList.add('listening');
-        coreState.textContent = 'LISTENING';
       };
 
       recognition.onresult = (event) => {
         const transcript = event.results[0][0].transcript;
         chatInput.value = transcript;
+        pushLog('Voice input used');
         chatForm.requestSubmit();
       };
 
@@ -251,28 +246,21 @@
         if (listening) {
           recognition.stop();
         } else {
-          speechSynthesis.cancel(); // stop JARVIS talking before we listen
+          speechSynthesis.cancel(); // stop Barney talking before we listen
           recognition.start();
         }
       });
     }
   }
 
-  // ---------- Boot sequence ----------
+  // ---------- Boot ----------
   function init() {
-    tickClock();
-    tickUptime();
-    refreshStatus();
+    tickDate();
+    setInterval(tickDate, 30000);
+    checkHealth();
     refreshTodos();
-    pushLog('System boot sequence complete.');
-
-    setInterval(tickClock, 1000);
-    setInterval(tickUptime, 1000);
-    setInterval(refreshStatus, 2500);
     setInterval(refreshTodos, 15000);
-    setInterval(() => {
-      pushLog(logMessages[Math.floor(Math.random() * logMessages.length)]);
-    }, 6000);
+    pushLog('Dashboard loaded');
   }
 
   document.addEventListener('DOMContentLoaded', init);
