@@ -104,22 +104,33 @@
     chatLog.scrollTop = chatLog.scrollHeight;
   }
 
-  // Placeholder response generator — replace with a real call to a model,
-  // passing JARVIS_PERSONA.SYSTEM_PROMPT (see persona.js) as the system
-  // prompt so the live responses keep this same voice.
   function pickLine(lines) {
     return lines[Math.floor(Math.random() * lines.length)];
   }
 
-  function sendToAssistant(message) {
-    return new Promise((resolve) => {
-      const delay = 500 + Math.random() * 700;
-      setTimeout(() => {
-        const persona = window.JARVIS_PERSONA;
-        const ack = pickLine(persona.ACK);
-        resolve(`${ack} ${persona.FALLBACK_SUFFIX}`);
-      }, delay);
-    });
+  // Conversation history sent to the server on each turn, so the model has
+  // context. Kept client-side; server.js is stateless between requests.
+  const history = [];
+
+  // Calls the /api/chat endpoint in server.js, which forwards to Claude
+  // using JARVIS_PERSONA.SYSTEM_PROMPT. Falls back to a stock persona line
+  // if the server isn't running or ANTHROPIC_API_KEY isn't configured.
+  async function sendToAssistant(message) {
+    const persona = window.JARVIS_PERSONA;
+    try {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, history }),
+      });
+      if (!res.ok) throw new Error(`server responded ${res.status}`);
+      const data = await res.json();
+      history.push({ role: 'user', content: message });
+      history.push({ role: 'assistant', content: data.reply });
+      return data.reply;
+    } catch (err) {
+      return `${pickLine(persona.ERROR)} ${persona.FALLBACK_SUFFIX}`;
+    }
   }
 
   chatForm.addEventListener('submit', async (e) => {
