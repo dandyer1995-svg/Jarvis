@@ -1,239 +1,164 @@
-// JARVIS-style AI interface dashboard
-// All "live" system numbers below are simulated placeholders — wire buildStatus()
-// and sendToAssistant() up to a real backend/API to make this functional.
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS // AI Interface</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
 
-(function () {
-  const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 52; // matches r=52 in the SVG gauges
+<div class="scanlines"></div>
+<div class="vignette"></div>
 
-  // ---------- Clock ----------
-  function tickClock() {
-    const now = new Date();
-    document.getElementById('clockTime').textContent =
-      now.toLocaleTimeString('en-US', { hour12: false });
-    document.getElementById('clockDate').textContent =
-      now.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
-  }
+<div class="app">
 
-  // ---------- Uptime ----------
-  const bootTime = Date.now();
-  function tickUptime() {
-    const secs = Math.floor((Date.now() - bootTime) / 1000);
-    const h = String(Math.floor(secs / 3600)).padStart(2, '0');
-    const m = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
-    const s = String(secs % 60).padStart(2, '0');
-    document.getElementById('uptimeVal').textContent = `${h}:${m}:${s}`;
-  }
+  <!-- ===== HEADER ===== -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◈</span>
+      <span class="brand-name">J.A.R.V.I.S.</span>
+      <span class="brand-sub">AI INTERFACE</span>
+    </div>
+    <div class="topbar-center">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="statusText">SYSTEMS ONLINE</span>
+    </div>
+    <div class="clock-block">
+      <div id="clockTime">00:00:00</div>
+      <div id="clockDate">--- -- ----</div>
+    </div>
+  </header>
 
-  // ---------- Gauges (CPU / MEM) ----------
-  function setGauge(metric, percent) {
-    const gauge = document.querySelector(`.gauge[data-metric="${metric}"]`);
-    if (!gauge) return;
-    const fill = gauge.querySelector('.gauge-fill');
-    const value = gauge.querySelector('.gauge-value');
-    const offset = GAUGE_CIRCUMFERENCE * (1 - percent / 100);
-    fill.style.strokeDashoffset = offset;
-    value.textContent = Math.round(percent);
-  }
+  <!-- ===== MAIN GRID ===== -->
+  <main class="grid">
 
-  // ---------- Bar metrics ----------
-  function setBar(barId, valueId, percent, label) {
-    document.getElementById(barId).style.width = `${percent}%`;
-    document.getElementById(valueId).textContent = label;
-  }
+    <!-- LEFT: SYSTEM STATUS -->
+    <section class="panel col-left">
+      <h2 class="panel-title">SYSTEM STATUS</h2>
 
-  function randomWalk(prev, min, max, maxStep) {
-    const next = prev + (Math.random() - 0.5) * maxStep;
-    return Math.min(max, Math.max(min, next));
-  }
+      <div class="gauge-row">
+        <div class="gauge" data-metric="cpu">
+          <svg viewBox="0 0 120 120" class="gauge-ring">
+            <circle cx="60" cy="60" r="52" class="gauge-track"/>
+            <circle cx="60" cy="60" r="52" class="gauge-fill"/>
+          </svg>
+          <div class="gauge-label">
+            <span class="gauge-value">--</span>
+            <span class="gauge-unit">%</span>
+            <span class="gauge-name">CPU</span>
+          </div>
+        </div>
 
-  let cpu = 32, mem = 54, disk = 61, net = 120, lat = 40;
+        <div class="gauge" data-metric="mem">
+          <svg viewBox="0 0 120 120" class="gauge-ring">
+            <circle cx="60" cy="60" r="52" class="gauge-track"/>
+            <circle cx="60" cy="60" r="52" class="gauge-fill"/>
+          </svg>
+          <div class="gauge-label">
+            <span class="gauge-value">--</span>
+            <span class="gauge-unit">%</span>
+            <span class="gauge-name">MEM</span>
+          </div>
+        </div>
+      </div>
 
-  function refreshStatus() {
-    cpu = randomWalk(cpu, 8, 92, 14);
-    mem = randomWalk(mem, 20, 85, 6);
-    disk = randomWalk(disk, 40, 80, 3);
-    net = randomWalk(net, 10, 900, 120);
-    lat = randomWalk(lat, 12, 120, 20);
+      <div class="bar-metrics">
+        <div class="bar-metric">
+          <div class="bar-metric-head"><span>NETWORK I/O</span><span id="netVal">-- KB/s</span></div>
+          <div class="bar-track"><div class="bar-fill" id="netBar"></div></div>
+        </div>
+        <div class="bar-metric">
+          <div class="bar-metric-head"><span>DISK</span><span id="diskVal">-- %</span></div>
+          <div class="bar-track"><div class="bar-fill" id="diskBar"></div></div>
+        </div>
+        <div class="bar-metric">
+          <div class="bar-metric-head"><span>LATENCY</span><span id="latVal">-- ms</span></div>
+          <div class="bar-track"><div class="bar-fill" id="latBar"></div></div>
+        </div>
+      </div>
 
-    setGauge('cpu', cpu);
-    setGauge('mem', mem);
-    setBar('diskBar', 'diskVal', disk, `${Math.round(disk)} %`);
-    setBar('netBar', 'netVal', Math.min(100, net / 9), `${Math.round(net)} KB/s`);
-    setBar('latBar', 'latVal', Math.min(100, lat), `${Math.round(lat)} ms`);
-  }
+      <h2 class="panel-title panel-title-spaced">ACTIVE MODULES</h2>
+      <ul class="module-list" id="moduleList">
+        <li><span class="mod-dot ok"></span> Speech Recognition</li>
+        <li><span class="mod-dot ok"></span> Language Core</li>
+        <li><span class="mod-dot ok"></span> Memory Store</li>
+        <li><span class="mod-dot warn"></span> Vision Module</li>
+        <li><span class="mod-dot off"></span> External Sensors</li>
+      </ul>
+    </section>
 
-  // ---------- Activity log ----------
-  const logMessages = [
-    'Voice input calibrated.',
-    'Background sync completed.',
-    'Memory index optimized.',
-    'No anomalies detected.',
-    'Session context saved.',
-    'Network handshake stable.',
-    'Idle scan complete.'
-  ];
-  const logList = document.getElementById('logList');
-  function pushLog(text) {
-    const li = document.createElement('li');
-    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-    li.innerHTML = `<span class="log-time">${time}</span>${text}`;
-    logList.prepend(li);
-    while (logList.children.length > 12) {
-      logList.removeChild(logList.lastChild);
-    }
-  }
+    <!-- CENTER: CORE + CHAT -->
+    <section class="col-center">
 
-  // ---------- Chat ----------
-  const chatLog = document.getElementById('chatLog');
-  const chatForm = document.getElementById('chatForm');
-  const chatInput = document.getElementById('chatInput');
-  const coreState = document.getElementById('coreState');
+      <div class="core-wrap">
+        <div class="core">
+          <svg viewBox="0 0 400 400" class="core-svg">
+            <circle cx="200" cy="200" r="188" class="ring ring-outer"/>
+            <circle cx="200" cy="200" r="160" class="ring ring-mid"/>
+            <circle cx="200" cy="200" r="130" class="ring ring-dash"/>
+            <circle cx="200" cy="200" r="100" class="ring ring-sweep"/>
+            <g class="tick-group">
+              <!-- ticks generated in JS -->
+            </g>
+          </svg>
+          <div class="core-center">
+            <div class="core-glow"></div>
+            <div class="core-id">
+              <span class="core-id-line1">JARVIS</span>
+              <span class="core-id-line2" id="coreState">LISTENING</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-  function appendMessage(who, text) {
-    const wrap = document.createElement('div');
-    wrap.className = `msg msg-${who}`;
-    const tag = document.createElement('span');
-    tag.className = 'msg-tag';
-    tag.textContent = who === 'ai' ? 'JARVIS' : 'YOU';
-    const body = document.createElement('span');
-    body.className = 'msg-text';
-    body.textContent = text;
-    wrap.appendChild(tag);
-    wrap.appendChild(body);
-    chatLog.appendChild(wrap);
-    chatLog.scrollTop = chatLog.scrollHeight;
-  }
+      <div class="chat-panel">
+        <h2 class="panel-title">CONSOLE</h2>
+        <div class="chat-log" id="chatLog">
+          <div class="msg msg-ai">
+            <span class="msg-tag">JARVIS</span>
+            <span class="msg-text">Good to see you, sir. All systems are nominal. How may I be of service?</span>
+          </div>
+        </div>
+        <form class="chat-input-row" id="chatForm">
+          <span class="prompt-caret">&gt;</span>
+          <input type="text" id="chatInput" autocomplete="off" placeholder="Type a command or message...">
+          <button type="button" id="micBtn" class="mic-btn" aria-label="Voice input">🎤</button>
+          <button type="submit" class="send-btn">SEND</button>
+        </form>
+      </div>
+    </section>
 
-  function pickLine(lines) {
-    return lines[Math.floor(Math.random() * lines.length)];
-  }
+    <!-- RIGHT: ACTIVITY / LOG -->
+    <section class="panel col-right">
+      <h2 class="panel-title">ACTIVITY LOG</h2>
+      <ul class="log-list" id="logList"></ul>
 
-  // Conversation history sent to the server on each turn, so the model has
-  // context. Kept client-side; server.js is stateless between requests.
-  const history = [];
+      <h2 class="panel-title panel-title-spaced">ENVIRONMENT</h2>
+      <div class="env-grid">
+        <div class="env-item">
+          <span class="env-label">LOCATION</span>
+          <span class="env-value">Local Node</span>
+        </div>
+        <div class="env-item">
+          <span class="env-label">UPTIME</span>
+          <span class="env-value" id="uptimeVal">00:00:00</span>
+        </div>
+        <div class="env-item">
+          <span class="env-label">MODEL</span>
+          <span class="env-value">Claude</span>
+        </div>
+        <div class="env-item">
+          <span class="env-label">SECURITY</span>
+          <span class="env-value ok-text">SECURE</span>
+        </div>
+      </div>
+    </section>
 
-  // Calls the /api/chat endpoint in server.js, which forwards to Claude
-  // using JARVIS_PERSONA.SYSTEM_PROMPT. Falls back to a stock persona line
-  // if the server isn't running or ANTHROPIC_API_KEY isn't configured.
-  async function sendToAssistant(message) {
-    const persona = window.JARVIS_PERSONA;
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, history }),
-      });
-      if (!res.ok) throw new Error(`server responded ${res.status}`);
-      const data = await res.json();
-      history.push({ role: 'user', content: message });
-      history.push({ role: 'assistant', content: data.reply });
-      return data.reply;
-    } catch (err) {
-      return `${pickLine(persona.ERROR)} ${persona.FALLBACK_SUFFIX}`;
-    }
-  }
+  </main>
+</div>
 
-  chatForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const text = chatInput.value.trim();
-    if (!text) return;
-    appendMessage('user', text);
-    chatInput.value = '';
-    coreState.textContent = 'PROCESSING';
-    pushLog(`Command received: "${text}"`);
-
-    const reply = await sendToAssistant(text);
-    appendMessage('ai', reply);
-    speak(reply);
-    coreState.textContent = 'LISTENING';
-  });
-
-  // ---------- Voice: JARVIS speaks (text-to-speech) ----------
-  let jarvisVoice = null;
-  function pickVoice() {
-    const voices = speechSynthesis.getVoices();
-    jarvisVoice =
-      voices.find(v => /Daniel|Google UK English Male/i.test(v.name)) ||
-      voices.find(v => v.lang === 'en-GB') ||
-      voices.find(v => v.lang.startsWith('en')) ||
-      voices[0] || null;
-  }
-  if ('speechSynthesis' in window) {
-    speechSynthesis.onvoiceschanged = pickVoice;
-    pickVoice();
-  }
-  function speak(text) {
-    if (!('speechSynthesis' in window)) return;
-    speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    if (jarvisVoice) utter.voice = jarvisVoice;
-    utter.rate = 1;
-    utter.pitch = 0.85;
-    speechSynthesis.speak(utter);
-  }
-
-  // ---------- Voice: you speak (speech-to-text via mic button) ----------
-  const micBtn = document.getElementById('micBtn');
-  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let recognition = null;
-  let listening = false;
-
-  if (micBtn) {
-    if (!SpeechRecognitionCtor) {
-      micBtn.disabled = true;
-      micBtn.title = 'Speech recognition not supported in this browser (try Chrome or Edge)';
-    } else {
-      recognition = new SpeechRecognitionCtor();
-      recognition.lang = 'en-GB';
-      recognition.continuous = false;
-      recognition.interimResults = false;
-
-      recognition.onstart = () => {
-        listening = true;
-        micBtn.classList.add('listening');
-        coreState.textContent = 'LISTENING';
-      };
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        chatInput.value = transcript;
-        chatForm.requestSubmit();
-      };
-
-      recognition.onerror = (event) => {
-        pushLog(`Voice input error: ${event.error}`);
-      };
-
-      recognition.onend = () => {
-        listening = false;
-        micBtn.classList.remove('listening');
-      };
-
-      micBtn.addEventListener('click', () => {
-        if (listening) {
-          recognition.stop();
-        } else {
-          speechSynthesis.cancel(); // stop JARVIS talking before we listen
-          recognition.start();
-        }
-      });
-    }
-  }
-
-  // ---------- Boot sequence ----------
-  function init() {
-    tickClock();
-    tickUptime();
-    refreshStatus();
-    pushLog('System boot sequence complete.');
-
-    setInterval(tickClock, 1000);
-    setInterval(tickUptime, 1000);
-    setInterval(refreshStatus, 2500);
-    setInterval(() => {
-      pushLog(logMessages[Math.floor(Math.random() * logMessages.length)]);
-    }, 6000);
-  }
-
-  document.addEventListener('DOMContentLoaded', init);
-})();
+<script src="assets/js/persona.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>
