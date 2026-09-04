@@ -146,7 +146,45 @@
     appendMessage('ai', reply);
     speak(reply);
     coreState.textContent = 'LISTENING';
+    refreshTodos();
   });
+
+  // ---------- To-Do list ----------
+  const todoList = document.getElementById('todoList');
+
+  function renderTodos(items) {
+    if (!todoList) return;
+    todoList.innerHTML = '';
+    if (!items.length) {
+      const li = document.createElement('li');
+      li.className = 'todo-empty';
+      li.textContent = 'Nothing on the list yet.';
+      todoList.appendChild(li);
+      return;
+    }
+    items.forEach((item) => {
+      const li = document.createElement('li');
+      if (item.done) li.classList.add('done');
+      const check = document.createElement('span');
+      check.className = 'todo-check' + (item.done ? ' checked' : '');
+      const label = document.createElement('span');
+      label.textContent = item.text;
+      li.appendChild(check);
+      li.appendChild(label);
+      todoList.appendChild(li);
+    });
+  }
+
+  async function refreshTodos() {
+    try {
+      const res = await fetch('/api/todos');
+      if (!res.ok) return;
+      const data = await res.json();
+      renderTodos(data.items || []);
+    } catch (err) {
+      // silent — panel just keeps showing its last known state
+    }
+  }
 
   // ---------- Voice: JARVIS speaks (text-to-speech) ----------
   let jarvisVoice = null;
@@ -225,11 +263,13 @@
     tickClock();
     tickUptime();
     refreshStatus();
+    refreshTodos();
     pushLog('System boot sequence complete.');
 
     setInterval(tickClock, 1000);
     setInterval(tickUptime, 1000);
     setInterval(refreshStatus, 2500);
+    setInterval(refreshTodos, 15000);
     setInterval(() => {
       pushLog(logMessages[Math.floor(Math.random() * logMessages.length)]);
     }, 6000);
