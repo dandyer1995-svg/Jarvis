@@ -1,6 +1,6 @@
-// Static file server + chat proxy for the Barney dashboard.
+// Static file server + chat proxy for the JARVIS dashboard.
 // Keeps the Anthropic API key server-side and forwards chat turns to Claude
-// using the persona system prompt, so the frontend never touches
+// using the JARVIS_PERSONA system prompt, so the frontend never touches
 // the key directly.
 
 require('dotenv').config();
@@ -14,15 +14,15 @@ const PORT = process.env.PORT || 3000;
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
 
 if (!process.env.ANTHROPIC_API_KEY) {
-  console.warn('[barney] ANTHROPIC_API_KEY is not set — /api/chat will return an error until it is. See .env.example.');
+  console.warn('[jarvis] ANTHROPIC_API_KEY is not set — /api/chat will return an error until it is. See .env.example.');
 }
 if (!process.env.DATABASE_URL) {
-  console.warn('[barney] DATABASE_URL is not set — the to-do list will not be saved. See README.');
+  console.warn('[jarvis] DATABASE_URL is not set — the to-do list will not be saved. See README.');
 }
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-// Tools Barney can call mid-conversation to manage the user's to-do list.
+// Tools JARVIS can call mid-conversation to manage the user's to-do list.
 const tools = [
   {
     name: 'add_todo',
@@ -140,7 +140,7 @@ app.post('/api/chat', async (req, res) => {
 
     res.json({ reply });
   } catch (err) {
-    console.error('[barney] /api/chat error:', err.message);
+    console.error('[jarvis] /api/chat error:', err.message);
     res.status(502).json({ error: 'model request failed' });
   }
 });
@@ -150,46 +150,15 @@ app.get('/api/todos', async (req, res) => {
     const items = await db.listTodos();
     res.json({ items });
   } catch (err) {
-    console.error('[barney] /api/todos error:', err.message);
+    console.error('[jarvis] /api/todos error:', err.message);
     res.status(500).json({ error: 'failed to load todos' });
   }
 });
 
-app.post('/api/todos/:id/complete', async (req, res) => {
-  try {
-    const item = await db.completeTodo(Number(req.params.id));
-    if (!item) return res.status(404).json({ error: 'not found' });
-    res.json({ item });
-  } catch (err) {
-    console.error('[barney] complete todo error:', err.message);
-    res.status(500).json({ error: 'failed to complete todo' });
-  }
-});
-
-app.delete('/api/todos/:id', async (req, res) => {
-  try {
-    const removed = await db.removeTodo(Number(req.params.id));
-    res.json({ removed });
-  } catch (err) {
-    console.error('[barney] delete todo error:', err.message);
-    res.status(500).json({ error: 'failed to remove todo' });
-  }
-});
-
-// Lets the dashboard show real status (model, DB connection) instead of
-// decorative placeholders.
-app.get('/api/health', (req, res) => {
-  res.json({
-    model: MODEL,
-    apiKeyConfigured: !!process.env.ANTHROPIC_API_KEY,
-    dbConnected: db.isConfigured,
-  });
-});
-
 db.init()
-  .then(() => console.log('[barney] todos table ready'))
-  .catch((err) => console.error('[barney] failed to set up the database:', err.message));
+  .then(() => console.log('[jarvis] todos table ready'))
+  .catch((err) => console.error('[jarvis] failed to set up the database:', err.message));
 
 app.listen(PORT, () => {
-  console.log(`[barney] serving on http://localhost:${PORT}`);
+  console.log(`[jarvis] serving on http://localhost:${PORT}`);
 });
