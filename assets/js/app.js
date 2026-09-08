@@ -851,22 +851,29 @@
   // ---------- External connections status ----------
   async function refreshConnections() {
     const outlookStatus = document.getElementById('outlookStatus');
-    if (!outlookStatus) return;
+    const saltwoodGmailStatus = document.getElementById('saltwoodGmailStatus');
+    if (!outlookStatus && !saltwoodGmailStatus) return;
+
+    function renderStatus(el, info, connectUrl) {
+      if (!el) return;
+      if (!info || !info.configured) {
+        el.textContent = 'Not set up';
+        el.classList.remove('connected');
+      } else if (info.connected) {
+        el.textContent = 'Connected';
+        el.classList.add('connected');
+      } else {
+        el.classList.remove('connected');
+        el.innerHTML = `<a href="${connectUrl}">Connect</a>`;
+      }
+    }
+
     try {
       const res = await fetch('/api/connections');
       if (!res.ok) return;
       const data = await res.json();
-      const ms = data.microsoft || {};
-      if (!ms.configured) {
-        outlookStatus.textContent = 'Not set up';
-        outlookStatus.classList.remove('connected');
-      } else if (ms.connected) {
-        outlookStatus.textContent = 'Connected';
-        outlookStatus.classList.add('connected');
-      } else {
-        outlookStatus.classList.remove('connected');
-        outlookStatus.innerHTML = '<a href="/auth/microsoft/login">Connect</a>';
-      }
+      renderStatus(outlookStatus, data.microsoft, '/auth/microsoft/login');
+      renderStatus(saltwoodGmailStatus, data.googleSaltwood, '/auth/google/login');
     } catch (err) {
       // silent
     }

@@ -10,6 +10,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const persona = require('./assets/js/persona.js');
 const db = require('./db.js');
 const microsoft = require('./microsoft.js');
+const google = require('./google.js');
 
 const PORT = process.env.PORT || 3000;
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
@@ -22,6 +23,9 @@ if (!process.env.DATABASE_URL) {
 }
 if (!microsoft.isConfigured()) {
   console.warn('[jarvis] Microsoft Graph is not configured — set MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_REDIRECT_URI to enable Outlook.');
+}
+if (!google.isConfigured()) {
+  console.warn('[jarvis] Google is not configured — set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI to enable Saltwood Gmail.');
 }
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -124,6 +128,29 @@ const tools = [
       },
     },
   },
+  {
+    name: 'get_saltwood_calendar_events',
+    description:
+      "Get upcoming events from the Saltwood & Co Google Calendar. Note: since the user's Outlook diary isn't directly accessible, this calendar also holds Yesss Electrical diary entries mirrored in manually — so an event here isn't necessarily Saltwood-specific unless the text says so. If not connected yet, returns an error explaining how to connect.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        days_ahead: { type: 'integer', description: 'How many days ahead to look from now. 1 covers roughly today, 7 covers the coming week. Default 1.' },
+      },
+    },
+  },
+  {
+    name: 'get_saltwood_emails',
+    description:
+      "Get recent emails from the Saltwood & Co Gmail inbox (subject, sender, preview, read status). If not connected yet, returns an error explaining how to connect.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        count: { type: 'integer', description: 'How many recent emails to fetch. Default 10.' },
+        unread_only: { type: 'boolean', description: 'If true, only unread emails. Default false.' },
+      },
+    },
+  },
 ];
 
 async function runTool(name, input) {
@@ -170,6 +197,32 @@ async function runTool(name, input) {
       }
       try {
         return { ok: true, emails: await microsoft.getRecentEmails(input.count, input.unread_only) };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+    case 'get_saltwood_calendar_events': {
+      if (!google.isConfigured()) {
+        return { ok: false, error: 'Saltwood Gmail integration is not set up on the server yet.' };
+      }
+      if (!(await google.isConnected())) {
+        return { ok: false, error: 'Saltwood Gmail is not connected yet — the user needs to visit /auth/google/login once to connect it.' };
+      }
+      try {
+        return { ok: true, events: await google.getCalendarEvents(input.days_ahead) };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+    case 'get_saltwood_emails': {
+      if (!google.isConfigured()) {
+        return { ok: false, error: 'Saltwood Gmail integration is not set up on the server yet.' };
+      }
+      if (!(await google.isConnected())) {
+        return { ok: false, error: 'Saltwood Gmail is not connected yet — the user needs to visit /auth/google/login once to connect it.' };
+      }
+      try {
+        return { ok: true, emails: await google.getRecentEmails(input.count, input.unread_only) };
       } catch (err) {
         return { ok: false, error: err.message };
       }
@@ -400,12 +453,41 @@ app.get('/auth/microsoft/callback', async (req, res) => {
   }
 });
 
+// ---------- Saltwood & Co Gmail connection (one-time browser flow) ----------
+app.get('/auth/google/login', (req, res) => {
+  if (!google.isConfigured()) {
+    return res.status(500).send('Google integration is not configured on the server (missing GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / GOOGLE_REDIRECT_URI).');
+  }
+  res.redirect(google.getAuthUrl());
+});
+
+app.get('/auth/google/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error) {
+    return res.status(400).send(`Google sign-in failed: ${error}`);
+  }
+  if (!code) {
+    return res.status(400).send('No authorization code received from Google.');
+  }
+  try {
+    await google.exchangeCodeForToken(code);
+    res.send('<h2>Saltwood Gmail connected.</h2><p>You can close this tab and go back to JARVIS.</p>');
+  } catch (err) {
+    console.error('[jarvis] Google token exchange failed:', err.message);
+    res.status(500).send(`Failed to connect Saltwood Gmail: ${err.message}`);
+  }
+});
+
 app.get('/api/connections', async (req, res) => {
   try {
     res.json({
       microsoft: {
         configured: microsoft.isConfigured(),
         connected: await microsoft.isConnected(),
+      },
+      googleSaltwood: {
+        configured: google.isConfigured(),
+        connected: await google.isConnected(),
       },
     });
   } catch (err) {
