@@ -53,6 +53,35 @@
 }
 .todo-check.checked{ background:var(--cyan); border-color:var(--cyan); box-shadow:var(--glow); }
 .todo-empty{ color:var(--text-dim); font-style:italic; border-bottom:none; }
+
+.project-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:2px; }
+.project-card{
+  border:1px solid var(--panel-border);
+  border-radius:6px;
+  padding:8px 10px;
+  background:rgba(255,255,255,.02);
+}
+.project-head{
+  display:flex; justify-content:space-between; align-items:baseline;
+  font-size:12px; margin-bottom:6px;
+}
+.project-name{ color:var(--text); font-weight:600; letter-spacing:.02em; }
+.project-progress{ color:var(--text-dim); font-size:11px; }
+.milestone-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px; }
+.milestone{ display:flex; align-items:center; gap:6px; font-size:11px; }
+.milestone-dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+.milestone.ok .milestone-dot{ background:var(--cyan); box-shadow:0 0 5px var(--cyan); }
+.milestone.warn .milestone-dot{ background:var(--amber); box-shadow:0 0 6px var(--amber); }
+.milestone.overdue .milestone-dot{ background:var(--red); box-shadow:0 0 6px var(--red); }
+.milestone.done .milestone-dot{ background:var(--text-dim); }
+.milestone.none .milestone-dot{ background:var(--cyan-dim); }
+.milestone-text{ flex:1; color:var(--text); }
+.milestone.done .milestone-text{ color:var(--text-dim); text-decoration:line-through; }
+.milestone.overdue .milestone-text{ color:var(--red); }
+.milestone-due{ color:var(--text-dim); font-size:10px; white-space:nowrap; }
+.milestone.overdue .milestone-due{ color:var(--red); font-weight:600; }
+.milestone.warn .milestone-due{ color:var(--amber); }
+.project-empty{ color:var(--text-dim); font-style:italic; font-size:12px; }
 *{box-sizing:border-box;}
 
 html,body{

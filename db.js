@@ -23,19 +23,34 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  // Case-insensitive uniqueness so "Cabin build" and "cabin Build" resolve
+  // to the same project when JARVIS creates one from spoken input.
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS projects_name_lower_idx ON projects (LOWER(name))`);
+  // A milestone IS a todo — just one with a project and a due date attached.
+  await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE`);
+  await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS due_date DATE`);
 }
 
 async function listTodos() {
   if (!pool) return [];
-  const { rows } = await pool.query(
-    'SELECT id, text, done FROM todos ORDER BY done ASC, id ASC'
-  );
+  const { rows } = await pool.query(`
+    SELECT id, text, done, project_id, due_date
+    FROM todos
+    ORDER BY done ASC, (due_date IS NULL), due_date ASC, id ASC
+  `);
   return rows;
 }
 
 async function addTodo(text) {
   const { rows } = await pool.query(
-    'INSERT INTO todos (text) VALUES ($1) RETURNING id, text, done',
+    'INSERT INTO todos (text) VALUES ($1) RETURNING id, text, done, project_id, due_date',
     [text]
   );
   return rows[0];
@@ -43,7 +58,7 @@ async function addTodo(text) {
 
 async function completeTodo(id) {
   const { rows } = await pool.query(
-    'UPDATE todos SET done = true WHERE id = $1 RETURNING id, text, done',
+    'UPDATE todos SET done = true WHERE id = $1 RETURNING id, text, done, project_id, due_date',
     [id]
   );
   return rows[0] || null;
@@ -54,4 +69,49 @@ async function removeTodo(id) {
   return rowCount > 0;
 }
 
-module.exports = { init, listTodos, addTodo, completeTodo, removeTodo, isConfigured: !!pool };
+async function findOrCreateProject(name) {
+  const trimmed = String(name).trim();
+  const existing = await pool.query('SELECT id, name FROM projects WHERE LOWER(name) = LOWER($1)', [trimmed]);
+  if (existing.rows[0]) return existing.rows[0];
+  const { rows } = await pool.query(
+    'INSERT INTO projects (name) VALUES ($1) RETURNING id, name',
+    [trimmed]
+  );
+  return rows[0];
+}
+
+async function addMilestone(projectName, text, dueDate) {
+  const project = await findOrCreateProject(projectName);
+  const { rows } = await pool.query(
+    'INSERT INTO todos (text, project_id, due_date) VALUES ($1, $2, $3) RETURNING id, text, done, project_id, due_date',
+    [text, project.id, dueDate || null]
+  );
+  return { project, milestone: rows[0] };
+}
+
+async function listProjects() {
+  if (!pool) return [];
+  const projects = await pool.query('SELECT id, name FROM projects ORDER BY id ASC');
+  const milestones = await pool.query(`
+    SELECT id, text, done, project_id, due_date
+    FROM todos
+    WHERE project_id IS NOT NULL
+    ORDER BY (due_date IS NULL), due_date ASC, id ASC
+  `);
+  return projects.rows.map((p) => ({
+    ...p,
+    milestones: milestones.rows.filter((m) => m.project_id === p.id),
+  }));
+}
+
+module.exports = {
+  init,
+  listTodos,
+  addTodo,
+  completeTodo,
+  removeTodo,
+  findOrCreateProject,
+  addMilestone,
+  listProjects,
+  isConfigured: !!pool,
+};

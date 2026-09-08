@@ -147,6 +147,7 @@
     speak(reply);
     coreState.textContent = 'LISTENING';
     refreshTodos();
+    refreshProjects();
   });
 
   // ---------- To-Do list ----------
@@ -183,6 +184,111 @@
       renderTodos(data.items || []);
     } catch (err) {
       // silent — panel just keeps showing its last known state
+    }
+  }
+
+  // ---------- Projects & milestones ----------
+  const projectList = document.getElementById('projectList');
+
+  // Urgency drives both the dot colour on the dashboard and whether an
+  // item counts toward the spoken deadline summary on load.
+  function urgencyOf(item) {
+    if (item.done) return 'done';
+    if (!item.due_date) return 'none';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(`${item.due_date}T00:00:00`);
+    const diffDays = Math.round((due - today) / 86400000);
+    if (diffDays < 0) return 'overdue';
+    if (diffDays <= 3) return 'warn';
+    return 'ok';
+  }
+
+  function formatDueDate(dateStr) {
+    const d = new Date(`${dateStr}T00:00:00`);
+    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  }
+
+  function renderProjects(projects) {
+    if (!projectList) return;
+    projectList.innerHTML = '';
+    if (!projects.length) {
+      const div = document.createElement('div');
+      div.className = 'project-empty';
+      div.textContent = 'No projects yet.';
+      projectList.appendChild(div);
+      return;
+    }
+    projects.forEach((p) => {
+      const card = document.createElement('div');
+      card.className = 'project-card';
+
+      const head = document.createElement('div');
+      head.className = 'project-head';
+      const name = document.createElement('span');
+      name.className = 'project-name';
+      name.textContent = p.name;
+      const doneCount = p.milestones.filter((m) => m.done).length;
+      const progress = document.createElement('span');
+      progress.className = 'project-progress';
+      progress.textContent = `${doneCount}/${p.milestones.length}`;
+      head.appendChild(name);
+      head.appendChild(progress);
+      card.appendChild(head);
+
+      const ul = document.createElement('ul');
+      ul.className = 'milestone-list';
+      p.milestones.forEach((m) => {
+        const li = document.createElement('li');
+        li.className = `milestone ${urgencyOf(m)}`;
+        const dot = document.createElement('span');
+        dot.className = 'milestone-dot';
+        const text = document.createElement('span');
+        text.className = 'milestone-text';
+        text.textContent = m.text;
+        li.appendChild(dot);
+        li.appendChild(text);
+        if (m.due_date) {
+          const due = document.createElement('span');
+          due.className = 'milestone-due';
+          due.textContent = formatDueDate(m.due_date);
+          li.appendChild(due);
+        }
+        ul.appendChild(li);
+      });
+      card.appendChild(ul);
+      projectList.appendChild(card);
+    });
+  }
+
+  async function refreshProjects() {
+    try {
+      const res = await fetch('/api/projects');
+      if (!res.ok) return;
+      const data = await res.json();
+      renderProjects(data.projects || []);
+    } catch (err) {
+      // silent — panel just keeps showing its last known state
+    }
+  }
+
+  // Spoken once, when the dashboard is opened — not repeated on every
+  // refresh, so it doesn't nag.
+  async function speakDeadlineSummary() {
+    try {
+      const res = await fetch('/api/todos');
+      if (!res.ok) return;
+      const items = (await res.json()).items || [];
+      const pending = items.filter((i) => !i.done && i.due_date);
+      const overdue = pending.filter((i) => urgencyOf(i) === 'overdue').length;
+      const dueSoon = pending.filter((i) => urgencyOf(i) === 'warn').length;
+      if (!overdue && !dueSoon) return;
+      const parts = [];
+      if (overdue) parts.push(`${overdue} item${overdue === 1 ? '' : 's'} overdue`);
+      if (dueSoon) parts.push(`${dueSoon} due within the next three days`);
+      speak(`Sir, you have ${parts.join(' and ')}.`);
+    } catch (err) {
+      // silent
     }
   }
 
@@ -264,15 +370,21 @@
     tickUptime();
     refreshStatus();
     refreshTodos();
+    refreshProjects();
     pushLog('System boot sequence complete.');
 
     setInterval(tickClock, 1000);
     setInterval(tickUptime, 1000);
     setInterval(refreshStatus, 2500);
     setInterval(refreshTodos, 15000);
+    setInterval(refreshProjects, 15000);
     setInterval(() => {
       pushLog(logMessages[Math.floor(Math.random() * logMessages.length)]);
     }, 6000);
+
+    // Give voices a moment to load and the boot sequence to settle before
+    // JARVIS speaks the deadline summary, so it doesn't talk over itself.
+    setTimeout(speakDeadlineSummary, 1800);
   }
 
   document.addEventListener('DOMContentLoaded', init);

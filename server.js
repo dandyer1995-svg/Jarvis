@@ -56,6 +56,25 @@ const tools = [
       required: ['id'],
     },
   },
+  {
+    name: 'add_milestone',
+    description:
+      "Add a milestone (a deadline-bound task) to a project. Creates the project automatically if it doesn't already exist. The milestone also appears on the general to-do list, tagged with its project and due date.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        project: { type: 'string', description: 'Project name, e.g. "Cabin build"' },
+        text: { type: 'string', description: 'What needs to be done' },
+        due_date: { type: 'string', description: 'Deadline in YYYY-MM-DD format' },
+      },
+      required: ['project', 'text', 'due_date'],
+    },
+  },
+  {
+    name: 'list_projects',
+    description: "List every project along with its milestones, due dates, and completion status.",
+    input_schema: { type: 'object', properties: {} },
+  },
 ];
 
 async function runTool(name, input) {
@@ -70,6 +89,12 @@ async function runTool(name, input) {
     }
     case 'remove_todo':
       return { ok: await db.removeTodo(input.id) };
+    case 'add_milestone': {
+      const result = await db.addMilestone(input.project, input.text, input.due_date);
+      return { ok: true, ...result };
+    }
+    case 'list_projects':
+      return { ok: true, projects: await db.listProjects() };
     default:
       return { ok: false, error: `unknown tool ${name}` };
   }
@@ -93,11 +118,16 @@ app.post('/api/chat', async (req, res) => {
   const messages = Array.isArray(history) ? history.slice(-20) : [];
   messages.push({ role: 'user', content: message });
 
+  // Injected fresh per-request (rather than baked into persona.js) so
+  // Claude can resolve relative dates like "by Friday" correctly.
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const systemPrompt = `${persona.SYSTEM_PROMPT}\n\nToday's date is ${todayStr}.`;
+
   try {
     let response = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 512,
-      system: persona.SYSTEM_PROMPT,
+      system: systemPrompt,
       tools,
       messages,
     });
@@ -126,7 +156,7 @@ app.post('/api/chat', async (req, res) => {
       response = await anthropic.messages.create({
         model: MODEL,
         max_tokens: 512,
-        system: persona.SYSTEM_PROMPT,
+        system: systemPrompt,
         tools,
         messages,
       });
@@ -152,6 +182,16 @@ app.get('/api/todos', async (req, res) => {
   } catch (err) {
     console.error('[jarvis] /api/todos error:', err.message);
     res.status(500).json({ error: 'failed to load todos' });
+  }
+});
+
+app.get('/api/projects', async (req, res) => {
+  try {
+    const projects = await db.listProjects();
+    res.json({ projects });
+  } catch (err) {
+    console.error('[jarvis] /api/projects error:', err.message);
+    res.status(500).json({ error: 'failed to load projects' });
   }
 });
 
