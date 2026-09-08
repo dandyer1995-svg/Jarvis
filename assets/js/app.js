@@ -59,11 +59,17 @@
       const rad = ((angleDeg - 90) * Math.PI) / 180;
       return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
     }
-    function describeArc(cx, cy, r, startDeg, endDeg) {
-      const start = polarToCartesian(cx, cy, r, endDeg);
-      const end = polarToCartesian(cx, cy, r, startDeg);
-      const largeArc = endDeg - startDeg <= 180 ? '0' : '1';
-      return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} A ${r} ${r} 0 ${largeArc} 0 ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+
+    // Approximate the arc as short straight segments rather than one smooth
+    // curve — a handful of hard angles reads as routed/mechanical (like a
+    // PCB trace jogging around a board) instead of a clean sweep.
+    function facetedPoints(cx, cy, r, startDeg, endDeg, segments) {
+      const pts = [];
+      for (let i = 0; i <= segments; i++) {
+        const t = startDeg + ((endDeg - startDeg) * i) / segments;
+        pts.push(polarToCartesian(cx, cy, r, t));
+      }
+      return pts;
     }
 
     const radii = [68, 98, 128, 158, 188, 208];
@@ -74,19 +80,61 @@
         const sweep = 40 + Math.random() * 110;
         const dir = Math.random() < 0.5 ? 1 : -1;
         const duration = (5 + Math.random() * 32).toFixed(1);
+        const strokeW = (5 + Math.random() * 7);
+        const isAmber = Math.random() < 0.45;
+        const colorClass = isAmber ? ' amber' : '';
 
         const g = document.createElementNS(svgNS, 'g');
         g.style.transformOrigin = '200px 200px';
         g.style.animation = `${dir === 1 ? 'spin' : 'spin-rev'} ${duration}s linear infinite`;
 
-        const path = document.createElementNS(svgNS, 'path');
-        path.setAttribute('d', describeArc(200, 200, r, startDeg, startDeg + sweep));
-        const isAmber = Math.random() < 0.45;
-        path.setAttribute('class', `core-arc${isAmber ? ' amber' : ''}`);
-        path.setAttribute('stroke-width', (5 + Math.random() * 7).toFixed(1));
-        path.style.opacity = (0.55 + Math.random() * 0.4).toFixed(2);
+        // Few facets (4-6 hard joints) — angular, not smooth.
+        const facetCount = 4 + Math.floor(Math.random() * 3);
+        const pts = facetedPoints(200, 200, r, startDeg, startDeg + sweep, facetCount);
+        const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
 
+        const path = document.createElementNS(svgNS, 'path');
+        path.setAttribute('d', d);
+        path.setAttribute('class', `core-arc${colorClass}`);
+        path.setAttribute('stroke-width', strokeW.toFixed(1));
+        path.style.opacity = (0.55 + Math.random() * 0.4).toFixed(2);
         g.appendChild(path);
+
+        // Square connector pads at both ends — like solder pads/terminals.
+        [pts[0], pts[pts.length - 1]].forEach((p) => {
+          const pad = document.createElementNS(svgNS, 'rect');
+          const padSize = strokeW * 1.7;
+          pad.setAttribute('x', (p.x - padSize / 2).toFixed(1));
+          pad.setAttribute('y', (p.y - padSize / 2).toFixed(1));
+          pad.setAttribute('width', padSize.toFixed(1));
+          pad.setAttribute('height', padSize.toFixed(1));
+          pad.setAttribute('class', `core-pad${colorClass}`);
+          g.appendChild(pad);
+        });
+
+        // Perpendicular tick marks at 1-2 interior joints — reads as
+        // connector/via detail rather than a plain bar.
+        const tickCount = Math.min(2, facetCount - 1);
+        for (let t = 0; t < tickCount; t++) {
+          const idx = 1 + Math.floor(((pts.length - 2) * (t + 1)) / (tickCount + 1));
+          const p0 = pts[idx - 1];
+          const p1 = pts[idx + 1] || pts[idx];
+          const dx = p1.x - p0.x;
+          const dy = p1.y - p0.y;
+          const len = Math.hypot(dx, dy) || 1;
+          const px = -dy / len; // perpendicular unit vector
+          const py = dx / len;
+          const tickLen = strokeW * 1.4;
+          const center = pts[idx];
+          const tick = document.createElementNS(svgNS, 'line');
+          tick.setAttribute('x1', (center.x - px * tickLen).toFixed(1));
+          tick.setAttribute('y1', (center.y - py * tickLen).toFixed(1));
+          tick.setAttribute('x2', (center.x + px * tickLen).toFixed(1));
+          tick.setAttribute('y2', (center.y + py * tickLen).toFixed(1));
+          tick.setAttribute('class', `core-tick${colorClass}`);
+          g.appendChild(tick);
+        }
+
         tickGroup.appendChild(g);
       }
     });
