@@ -15,10 +15,11 @@
 
     const svgNS = 'http://www.w3.org/2000/svg';
     const bands = [
-      { count: 26, rMin: 60, rMax: 92, dotMin: 1.0, dotMax: 2.4, layerClass: 'particle-layer-1', op: [0.5, 1], amberChance: 0.05 },
-      { count: 36, rMin: 98, rMax: 138, dotMin: 0.8, dotMax: 2.0, layerClass: 'particle-layer-2', op: [0.35, 0.9], amberChance: 0.28 },
-      { count: 46, rMin: 144, rMax: 182, dotMin: 0.6, dotMax: 1.6, layerClass: 'particle-layer-3', op: [0.3, 0.75], amberChance: 0.48 },
-      { count: 34, rMin: 186, rMax: 198, dotMin: 0.4, dotMax: 1.2, layerClass: 'particle-layer-4', op: [0.2, 0.5], amberChance: 0.6 },
+      { count: 42, rMin: 55, rMax: 90, dotMin: 1.2, dotMax: 2.8, layerClass: 'particle-layer-1', op: [0.55, 1], amberChance: 0.05 },
+      { count: 58, rMin: 95, rMax: 135, dotMin: 1.0, dotMax: 2.4, layerClass: 'particle-layer-2', op: [0.4, 0.95], amberChance: 0.25 },
+      { count: 74, rMin: 140, rMax: 178, dotMin: 0.8, dotMax: 2.0, layerClass: 'particle-layer-3', op: [0.35, 0.8], amberChance: 0.45 },
+      { count: 64, rMin: 182, rMax: 198, dotMin: 0.6, dotMax: 1.6, layerClass: 'particle-layer-4', op: [0.25, 0.55], amberChance: 0.6 },
+      { count: 48, rMin: 200, rMax: 214, dotMin: 0.4, dotMax: 1.1, layerClass: 'particle-layer-5', op: [0.12, 0.35], amberChance: 0.5 },
     ];
 
     bands.forEach((band) => {
@@ -42,6 +43,52 @@
         g.appendChild(dot);
       }
       tickGroup.appendChild(g);
+    });
+  }
+
+  // ---------- Reactor core: solid curved arc segments ----------
+  // Chunky glowing bars sweeping partial circles at several radii, each on
+  // its own rotation speed/direction — layered under the particle field
+  // for a busier, more "overloaded reactor" HUD look.
+  function generateCoreArcs() {
+    const tickGroup = document.querySelector('.tick-group');
+    if (!tickGroup) return;
+    const svgNS = 'http://www.w3.org/2000/svg';
+
+    function polarToCartesian(cx, cy, r, angleDeg) {
+      const rad = ((angleDeg - 90) * Math.PI) / 180;
+      return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+    }
+    function describeArc(cx, cy, r, startDeg, endDeg) {
+      const start = polarToCartesian(cx, cy, r, endDeg);
+      const end = polarToCartesian(cx, cy, r, startDeg);
+      const largeArc = endDeg - startDeg <= 180 ? '0' : '1';
+      return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} A ${r} ${r} 0 ${largeArc} 0 ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+    }
+
+    const radii = [68, 98, 128, 158, 188, 208];
+    radii.forEach((r) => {
+      const segments = 2 + Math.floor(Math.random() * 2); // 2-3 bars per ring
+      for (let s = 0; s < segments; s++) {
+        const startDeg = Math.random() * 360;
+        const sweep = 40 + Math.random() * 110;
+        const dir = Math.random() < 0.5 ? 1 : -1;
+        const duration = (5 + Math.random() * 32).toFixed(1);
+
+        const g = document.createElementNS(svgNS, 'g');
+        g.style.transformOrigin = '200px 200px';
+        g.style.animation = `${dir === 1 ? 'spin' : 'spin-rev'} ${duration}s linear infinite`;
+
+        const path = document.createElementNS(svgNS, 'path');
+        path.setAttribute('d', describeArc(200, 200, r, startDeg, startDeg + sweep));
+        const isAmber = Math.random() < 0.45;
+        path.setAttribute('class', `core-arc${isAmber ? ' amber' : ''}`);
+        path.setAttribute('stroke-width', (5 + Math.random() * 7).toFixed(1));
+        path.style.opacity = (0.55 + Math.random() * 0.4).toFixed(2);
+
+        g.appendChild(path);
+        tickGroup.appendChild(g);
+      }
     });
   }
 
@@ -755,6 +802,7 @@
 
   // ---------- Boot sequence ----------
   function init() {
+    generateCoreArcs();
     generateCoreParticles();
     tickClock();
     tickUptime();
