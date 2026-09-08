@@ -9,22 +9,95 @@
   // Replaces the old clean HUD rings with layered bands of small dots that
   // orbit the core at different speeds/directions, like a swirling star
   // field around a central glow.
-  function generateCoreParticles() {
+  // ---------- Reactor core: precision HUD aperture ----------
+  // Thin etched rings (solid/dashed/dotted), a couple of small geometric
+  // accent nodes, and a sparse dot bezel — mostly static, with only a
+  // handful of rings on a slow rotation. Deliberately restrained: crisp
+  // vector linework rather than a dense glowing particle field.
+  function polarToCartesian(cx, cy, r, angleDeg) {
+    const rad = ((angleDeg - 90) * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+
+  function generateCoreRings() {
     const tickGroup = document.querySelector('.tick-group');
     if (!tickGroup) return;
-
     const svgNS = 'http://www.w3.org/2000/svg';
-    const bands = [
-      { count: 42, rMin: 55, rMax: 90, dotMin: 1.2, dotMax: 2.8, layerClass: 'particle-layer-1', op: [0.55, 1], amberChance: 0.05 },
-      { count: 58, rMin: 95, rMax: 135, dotMin: 1.0, dotMax: 2.4, layerClass: 'particle-layer-2', op: [0.4, 0.95], amberChance: 0.25 },
-      { count: 74, rMin: 140, rMax: 178, dotMin: 0.8, dotMax: 2.0, layerClass: 'particle-layer-3', op: [0.35, 0.8], amberChance: 0.45 },
-      { count: 64, rMin: 182, rMax: 198, dotMin: 0.6, dotMax: 1.6, layerClass: 'particle-layer-4', op: [0.25, 0.55], amberChance: 0.6 },
-      { count: 48, rMin: 200, rMax: 214, dotMin: 0.4, dotMax: 1.1, layerClass: 'particle-layer-5', op: [0.12, 0.35], amberChance: 0.5 },
-    ];
 
-    bands.forEach((band) => {
+    function addRing({ r, dash, w, faint, rot }) {
+      const circle = document.createElementNS(svgNS, 'circle');
+      circle.setAttribute('cx', '200');
+      circle.setAttribute('cy', '200');
+      circle.setAttribute('r', String(r));
+      circle.setAttribute('class', `core-ring${faint ? ' faint' : ''}`);
+      circle.setAttribute('stroke-width', String(w));
+      if (dash) circle.setAttribute('stroke-dasharray', dash);
+
+      if (rot) {
+        const g = document.createElementNS(svgNS, 'g');
+        g.style.transformOrigin = '200px 200px';
+        g.style.animation = `${rot.dir === 1 ? 'spin' : 'spin-rev'} ${rot.dur}s linear infinite`;
+        g.appendChild(circle);
+        tickGroup.appendChild(g);
+      } else {
+        tickGroup.appendChild(circle);
+      }
+    }
+
+    // Etched concentric rings — mostly static, mixed line styles.
+    addRing({ r: 58, dash: null, w: 1, faint: false });
+    addRing({ r: 74, dash: '1 5', w: 1, faint: true });
+    addRing({ r: 92, dash: null, w: 0.75, faint: true });
+    addRing({ r: 110, dash: '3 4', w: 1, faint: false, rot: { dir: 1, dur: 95 } });
+    addRing({ r: 130, dash: null, w: 0.75, faint: true });
+    addRing({ r: 152, dash: '16 7', w: 1.5, faint: false, rot: { dir: -1, dur: 75 } });
+    addRing({ r: 174, dash: '1 6', w: 1, faint: true });
+    addRing({ r: 198, dash: '2 4', w: 0.75, faint: true, rot: { dir: 1, dur: 140 } });
+
+    // Sparse dot bezels at two radii — the "instrument rim" detail from
+    // the reference image, not a dense particle cloud.
+    function addDotRing(r, count, size, faint) {
       const g = document.createElementNS(svgNS, 'g');
-      g.setAttribute('class', `particle-layer ${band.layerClass}`);
+      for (let i = 0; i < count; i++) {
+        const angle = (360 / count) * i;
+        const p = polarToCartesian(200, 200, r, angle);
+        const dot = document.createElementNS(svgNS, 'circle');
+        dot.setAttribute('cx', p.x.toFixed(1));
+        dot.setAttribute('cy', p.y.toFixed(1));
+        dot.setAttribute('r', String(size));
+        dot.setAttribute('class', `core-dot${faint ? ' faint' : ''}`);
+        g.appendChild(dot);
+      }
+      tickGroup.appendChild(g);
+    }
+    addDotRing(66, 28, 0.9, true);
+    addDotRing(206, 40, 1.1, false);
+
+    // A few small unfilled diamond nodes at asymmetric points — reads as
+    // a sensor/connector detail without adding visual weight.
+    function addDiamondNode(angleDeg, r, size) {
+      const p = polarToCartesian(200, 200, r, angleDeg);
+      const pts = [
+        [p.x, p.y - size], [p.x + size, p.y], [p.x, p.y + size], [p.x - size, p.y],
+      ];
+      const poly = document.createElementNS(svgNS, 'polygon');
+      poly.setAttribute('points', pts.map((pt) => pt.map((n) => n.toFixed(1)).join(',')).join(' '));
+      poly.setAttribute('class', 'core-node');
+      tickGroup.appendChild(poly);
+    }
+    addDiamondNode(-35, 100, 4);
+    addDiamondNode(150, 133, 3.5);
+    addDiamondNode(62, 179, 4.5);
+
+    // A light scatter of small dim particles for subtle texture/depth —
+    // far sparser than before, secondary to the rings rather than the
+    // main event.
+    const bands = [
+      { count: 10, rMin: 60, rMax: 95, dotMin: 0.6, dotMax: 1.1, op: [0.3, 0.55] },
+      { count: 14, rMin: 100, rMax: 150, dotMin: 0.5, dotMax: 1.0, op: [0.2, 0.45] },
+      { count: 12, rMin: 155, rMax: 195, dotMin: 0.4, dotMax: 0.9, op: [0.15, 0.35] },
+    ];
+    bands.forEach((band) => {
       for (let i = 0; i < band.count; i++) {
         const angle = Math.random() * Math.PI * 2;
         const radius = band.rMin + Math.random() * (band.rMax - band.rMin);
@@ -34,108 +107,12 @@
         dot.setAttribute('cx', x.toFixed(1));
         dot.setAttribute('cy', y.toFixed(1));
         dot.setAttribute('r', (band.dotMin + Math.random() * (band.dotMax - band.dotMin)).toFixed(2));
-        const isAmber = Math.random() < band.amberChance;
-        dot.setAttribute('class', `core-particle${isAmber ? ' amber' : ''}`);
+        dot.setAttribute('class', 'core-particle');
         const baseOp = (band.op[0] + Math.random() * (band.op[1] - band.op[0])).toFixed(2);
         dot.style.setProperty('--base-op', baseOp);
-        dot.style.animationDuration = `${(2.2 + Math.random() * 3).toFixed(1)}s`;
+        dot.style.animationDuration = `${(3 + Math.random() * 3).toFixed(1)}s`;
         dot.style.animationDelay = `-${(Math.random() * 4).toFixed(1)}s`;
-        g.appendChild(dot);
-      }
-      tickGroup.appendChild(g);
-    });
-  }
-
-  // ---------- Reactor core: solid curved arc segments ----------
-  // Chunky glowing bars sweeping partial circles at several radii, each on
-  // its own rotation speed/direction — layered under the particle field
-  // for a busier, more "overloaded reactor" HUD look.
-  function generateCoreArcs() {
-    const tickGroup = document.querySelector('.tick-group');
-    if (!tickGroup) return;
-    const svgNS = 'http://www.w3.org/2000/svg';
-
-    function polarToCartesian(cx, cy, r, angleDeg) {
-      const rad = ((angleDeg - 90) * Math.PI) / 180;
-      return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-    }
-
-    // Approximate the arc as short straight segments rather than one smooth
-    // curve — a handful of hard angles reads as routed/mechanical (like a
-    // PCB trace jogging around a board) instead of a clean sweep.
-    function facetedPoints(cx, cy, r, startDeg, endDeg, segments) {
-      const pts = [];
-      for (let i = 0; i <= segments; i++) {
-        const t = startDeg + ((endDeg - startDeg) * i) / segments;
-        pts.push(polarToCartesian(cx, cy, r, t));
-      }
-      return pts;
-    }
-
-    const radii = [68, 98, 128, 158, 188, 208];
-    radii.forEach((r) => {
-      const segments = 2 + Math.floor(Math.random() * 2); // 2-3 bars per ring
-      for (let s = 0; s < segments; s++) {
-        const startDeg = Math.random() * 360;
-        const sweep = 40 + Math.random() * 110;
-        const dir = Math.random() < 0.5 ? 1 : -1;
-        const duration = (5 + Math.random() * 32).toFixed(1);
-        const strokeW = (5 + Math.random() * 7);
-        const isAmber = Math.random() < 0.45;
-        const colorClass = isAmber ? ' amber' : '';
-
-        const g = document.createElementNS(svgNS, 'g');
-        g.style.transformOrigin = '200px 200px';
-        g.style.animation = `${dir === 1 ? 'spin' : 'spin-rev'} ${duration}s linear infinite`;
-
-        // Few facets (4-6 hard joints) — angular, not smooth.
-        const facetCount = 4 + Math.floor(Math.random() * 3);
-        const pts = facetedPoints(200, 200, r, startDeg, startDeg + sweep, facetCount);
-        const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
-
-        const path = document.createElementNS(svgNS, 'path');
-        path.setAttribute('d', d);
-        path.setAttribute('class', `core-arc${colorClass}`);
-        path.setAttribute('stroke-width', strokeW.toFixed(1));
-        path.style.opacity = (0.55 + Math.random() * 0.4).toFixed(2);
-        g.appendChild(path);
-
-        // Square connector pads at both ends — like solder pads/terminals.
-        [pts[0], pts[pts.length - 1]].forEach((p) => {
-          const pad = document.createElementNS(svgNS, 'rect');
-          const padSize = strokeW * 1.7;
-          pad.setAttribute('x', (p.x - padSize / 2).toFixed(1));
-          pad.setAttribute('y', (p.y - padSize / 2).toFixed(1));
-          pad.setAttribute('width', padSize.toFixed(1));
-          pad.setAttribute('height', padSize.toFixed(1));
-          pad.setAttribute('class', `core-pad${colorClass}`);
-          g.appendChild(pad);
-        });
-
-        // Perpendicular tick marks at 1-2 interior joints — reads as
-        // connector/via detail rather than a plain bar.
-        const tickCount = Math.min(2, facetCount - 1);
-        for (let t = 0; t < tickCount; t++) {
-          const idx = 1 + Math.floor(((pts.length - 2) * (t + 1)) / (tickCount + 1));
-          const p0 = pts[idx - 1];
-          const p1 = pts[idx + 1] || pts[idx];
-          const dx = p1.x - p0.x;
-          const dy = p1.y - p0.y;
-          const len = Math.hypot(dx, dy) || 1;
-          const px = -dy / len; // perpendicular unit vector
-          const py = dx / len;
-          const tickLen = strokeW * 1.4;
-          const center = pts[idx];
-          const tick = document.createElementNS(svgNS, 'line');
-          tick.setAttribute('x1', (center.x - px * tickLen).toFixed(1));
-          tick.setAttribute('y1', (center.y - py * tickLen).toFixed(1));
-          tick.setAttribute('x2', (center.x + px * tickLen).toFixed(1));
-          tick.setAttribute('y2', (center.y + py * tickLen).toFixed(1));
-          tick.setAttribute('class', `core-tick${colorClass}`);
-          g.appendChild(tick);
-        }
-
-        tickGroup.appendChild(g);
+        tickGroup.appendChild(dot);
       }
     });
   }
@@ -881,8 +858,7 @@
 
   // ---------- Boot sequence ----------
   function init() {
-    generateCoreArcs();
-    generateCoreParticles();
+    generateCoreRings();
     tickClock();
     tickUptime();
     refreshStatus();
