@@ -26,10 +26,14 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const tools = [
   {
     name: 'add_todo',
-    description: "Add a new item to the user's to-do list.",
+    description:
+      "Add a new item to the user's to-do list, optionally tagged to one of his businesses (Yesss Electrical, VA Power, Saltwood & Co) so it shows on that business's list. Omit business for general/personal items.",
     input_schema: {
       type: 'object',
-      properties: { text: { type: 'string', description: 'The to-do item text' } },
+      properties: {
+        text: { type: 'string', description: 'The to-do item text' },
+        business: { type: 'string', description: 'e.g. "Yesss Electrical", "VA Power", "Saltwood & Co" — omit if not business-specific' },
+      },
       required: ['text'],
     },
   },
@@ -80,7 +84,7 @@ const tools = [
 async function runTool(name, input) {
   switch (name) {
     case 'add_todo':
-      return { ok: true, item: await db.addTodo(input.text) };
+      return { ok: true, item: await db.addTodo(input.text, input.business) };
     case 'list_todos':
       return { ok: true, items: await db.listTodos() };
     case 'complete_todo': {
@@ -182,6 +186,16 @@ app.get('/api/todos', async (req, res) => {
   } catch (err) {
     console.error('[jarvis] /api/todos error:', err.message);
     res.status(500).json({ error: 'failed to load todos' });
+  }
+});
+
+app.get('/api/businesses', async (req, res) => {
+  try {
+    const businesses = await db.listBusinesses();
+    res.json({ businesses });
+  } catch (err) {
+    console.error('[jarvis] /api/businesses error:', err.message);
+    res.status(500).json({ error: 'failed to load businesses' });
   }
 });
 

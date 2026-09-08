@@ -30,35 +30,60 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
-  // Case-insensitive uniqueness so "Cabin build" and "cabin Build" resolve
-  // to the same project when JARVIS creates one from spoken input.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS businesses (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+  // Case-insensitive uniqueness so "Cabin build" and "cabin Build" (or
+  // "yesss electrical" spoken lowercase) resolve to the same row.
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS projects_name_lower_idx ON projects (LOWER(name))`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS businesses_name_lower_idx ON businesses (LOWER(name))`);
   // A milestone IS a todo — just one with a project and a due date attached.
   await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS due_date DATE`);
+  await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS business_id INTEGER REFERENCES businesses(id) ON DELETE SET NULL`);
+
+  // Seed the user's known businesses so they show up as tabs immediately,
+  // without needing to be created via conversation first.
+  const seedBusinesses = ['Yesss Electrical', 'VA Power', 'Saltwood & Co'];
+  for (const name of seedBusinesses) {
+    await pool.query(
+      'INSERT INTO businesses (name) VALUES ($1) ON CONFLICT (LOWER(name)) DO NOTHING',
+      [name]
+    );
+  }
 }
 
 async function listTodos() {
   if (!pool) return [];
   const { rows } = await pool.query(`
-    SELECT id, text, done, project_id, due_date
-    FROM todos
-    ORDER BY done ASC, (due_date IS NULL), due_date ASC, id ASC
+    SELECT t.id, t.text, t.done, t.project_id, t.due_date, t.business_id, b.name AS business_name
+    FROM todos t
+    LEFT JOIN businesses b ON b.id = t.business_id
+    ORDER BY t.done ASC, (t.due_date IS NULL), t.due_date ASC, t.id ASC
   `);
   return rows;
 }
 
-async function addTodo(text) {
+async function addTodo(text, businessName) {
+  let businessId = null;
+  if (businessName) {
+    const biz = await findOrCreateBusiness(businessName);
+    businessId = biz.id;
+  }
   const { rows } = await pool.query(
-    'INSERT INTO todos (text) VALUES ($1) RETURNING id, text, done, project_id, due_date',
-    [text]
+    'INSERT INTO todos (text, business_id) VALUES ($1, $2) RETURNING id, text, done, project_id, due_date, business_id',
+    [text, businessId]
   );
   return rows[0];
 }
 
 async function completeTodo(id) {
   const { rows } = await pool.query(
-    'UPDATE todos SET done = true WHERE id = $1 RETURNING id, text, done, project_id, due_date',
+    'UPDATE todos SET done = true WHERE id = $1 RETURNING id, text, done, project_id, due_date, business_id',
     [id]
   );
   return rows[0] || null;
@@ -67,6 +92,23 @@ async function completeTodo(id) {
 async function removeTodo(id) {
   const { rowCount } = await pool.query('DELETE FROM todos WHERE id = $1', [id]);
   return rowCount > 0;
+}
+
+async function findOrCreateBusiness(name) {
+  const trimmed = String(name).trim();
+  const existing = await pool.query('SELECT id, name FROM businesses WHERE LOWER(name) = LOWER($1)', [trimmed]);
+  if (existing.rows[0]) return existing.rows[0];
+  const { rows } = await pool.query(
+    'INSERT INTO businesses (name) VALUES ($1) RETURNING id, name',
+    [trimmed]
+  );
+  return rows[0];
+}
+
+async function listBusinesses() {
+  if (!pool) return [];
+  const { rows } = await pool.query('SELECT id, name FROM businesses ORDER BY id ASC');
+  return rows;
 }
 
 async function findOrCreateProject(name) {
@@ -144,5 +186,7 @@ module.exports = {
   setTodoDone,
   addMilestoneToProject,
   getProject,
+  findOrCreateBusiness,
+  listBusinesses,
   isConfigured: !!pool,
 };

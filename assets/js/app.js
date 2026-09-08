@@ -148,10 +148,15 @@
     coreState.textContent = 'LISTENING';
     refreshTodos();
     refreshProjects();
+    refreshBusinesses();
   });
 
   // ---------- To-Do list ----------
   const todoList = document.getElementById('todoList');
+  const todoTabs = document.getElementById('todoTabs');
+  let allTodos = [];
+  let businessList = [];
+  let activeBusinessTab = 'all'; // 'all' | 'none' | a business id
 
   function renderTodos(items) {
     if (!todoList) return;
@@ -176,14 +181,59 @@
     });
   }
 
+  function applyTodoFilter() {
+    let filtered = allTodos;
+    if (activeBusinessTab === 'none') {
+      filtered = allTodos.filter((i) => !i.business_id);
+    } else if (activeBusinessTab !== 'all') {
+      filtered = allTodos.filter((i) => i.business_id === activeBusinessTab);
+    }
+    renderTodos(filtered);
+  }
+
+  function renderTodoTabs() {
+    if (!todoTabs) return;
+    todoTabs.innerHTML = '';
+    const tabs = [
+      { id: 'all', label: 'All' },
+      { id: 'none', label: 'General' },
+      ...businessList.map((b) => ({ id: b.id, label: b.name })),
+    ];
+    tabs.forEach((t) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'todo-tab' + (activeBusinessTab === t.id ? ' active' : '');
+      btn.textContent = t.label;
+      btn.addEventListener('click', () => {
+        activeBusinessTab = t.id;
+        renderTodoTabs();
+        applyTodoFilter();
+      });
+      todoTabs.appendChild(btn);
+    });
+  }
+
   async function refreshTodos() {
     try {
       const res = await fetch('/api/todos');
       if (!res.ok) return;
       const data = await res.json();
-      renderTodos(data.items || []);
+      allTodos = data.items || [];
+      applyTodoFilter();
     } catch (err) {
       // silent — panel just keeps showing its last known state
+    }
+  }
+
+  async function refreshBusinesses() {
+    try {
+      const res = await fetch('/api/businesses');
+      if (!res.ok) return;
+      const data = await res.json();
+      businessList = data.businesses || [];
+      renderTodoTabs();
+    } catch (err) {
+      // silent
     }
   }
 
@@ -553,6 +603,7 @@
     tickClock();
     tickUptime();
     refreshStatus();
+    refreshBusinesses();
     refreshTodos();
     refreshProjects();
     pushLog('System boot sequence complete.');

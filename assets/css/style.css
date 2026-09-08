@@ -54,6 +54,18 @@
 .todo-check.checked{ background:var(--cyan); border-color:var(--cyan); box-shadow:var(--glow); }
 .todo-empty{ color:var(--text-dim); font-style:italic; border-bottom:none; }
 
+.todo-tabs{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+.todo-tab{
+  background:transparent; border:1px solid var(--panel-border); color:var(--text-dim);
+  font-size:10px; padding:4px 9px; border-radius:12px; cursor:pointer; transition:.15s;
+  white-space:nowrap;
+}
+.todo-tab:hover{ border-color:var(--cyan); color:var(--cyan); }
+.todo-tab.active{
+  background:var(--cyan); border-color:var(--cyan); color:#03080c;
+  box-shadow:var(--glow); font-weight:600;
+}
+
 .project-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:2px; }
 .project-card{
   border:1px solid var(--panel-border);
