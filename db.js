@@ -57,7 +57,7 @@ async function init() {
 
   // Seed the user's known businesses so they show up as tabs immediately,
   // without needing to be created via conversation first.
-  const seedBusinesses = ['Yesss Electrical', 'VA Power', 'Saltwood & Co'];
+  const seedBusinesses = ['Yesss Electrical', 'VA Power', 'Saltwood & Co', 'JARVIS'];
   for (const name of seedBusinesses) {
     await pool.query(
       'INSERT INTO businesses (name) VALUES ($1) ON CONFLICT (LOWER(name)) DO NOTHING',
