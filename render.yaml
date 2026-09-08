@@ -13,3 +13,9 @@ services:
         value: claude-sonnet-5
       - key: DATABASE_URL
         sync: false
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_REDIRECT_URI
+        sync: false

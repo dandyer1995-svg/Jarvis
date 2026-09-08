@@ -848,6 +848,30 @@
     }
   }
 
+  // ---------- External connections status ----------
+  async function refreshConnections() {
+    const outlookStatus = document.getElementById('outlookStatus');
+    if (!outlookStatus) return;
+    try {
+      const res = await fetch('/api/connections');
+      if (!res.ok) return;
+      const data = await res.json();
+      const ms = data.microsoft || {};
+      if (!ms.configured) {
+        outlookStatus.textContent = 'Not set up';
+        outlookStatus.classList.remove('connected');
+      } else if (ms.connected) {
+        outlookStatus.textContent = 'Connected';
+        outlookStatus.classList.add('connected');
+      } else {
+        outlookStatus.classList.remove('connected');
+        outlookStatus.innerHTML = '<a href="/auth/microsoft/login">Connect</a>';
+      }
+    } catch (err) {
+      // silent
+    }
+  }
+
   // ---------- Boot sequence ----------
   function init() {
     generateCoreArcs();
@@ -859,6 +883,7 @@
     refreshTodos();
     refreshProjects();
     refreshIdeas();
+    refreshConnections();
     pushLog('System boot sequence complete.');
 
     setInterval(tickClock, 1000);

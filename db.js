@@ -64,6 +64,38 @@ async function init() {
       [name]
     );
   }
+
+  // One row per connected external account (microsoft, google-saltwood, etc).
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS oauth_tokens (
+      provider TEXT PRIMARY KEY,
+      access_token TEXT NOT NULL,
+      refresh_token TEXT NOT NULL,
+      expires_at TIMESTAMPTZ NOT NULL
+    )
+  `);
+}
+
+async function saveOAuthToken(provider, accessToken, refreshToken, expiresAt) {
+  await pool.query(
+    `INSERT INTO oauth_tokens (provider, access_token, refresh_token, expires_at)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (provider) DO UPDATE SET
+       access_token = EXCLUDED.access_token,
+       refresh_token = EXCLUDED.refresh_token,
+       expires_at = EXCLUDED.expires_at`,
+    [provider, accessToken, refreshToken, expiresAt]
+  );
+}
+
+async function getOAuthToken(provider) {
+  if (!pool) return null;
+  const { rows } = await pool.query('SELECT * FROM oauth_tokens WHERE provider = $1', [provider]);
+  return rows[0] || null;
+}
+
+async function deleteOAuthToken(provider) {
+  await pool.query('DELETE FROM oauth_tokens WHERE provider = $1', [provider]);
 }
 
 async function listTodos() {
@@ -229,5 +261,8 @@ module.exports = {
   listIdeas,
   addIdea,
   removeIdea,
+  saveOAuthToken,
+  getOAuthToken,
+  deleteOAuthToken,
   isConfigured: !!pool,
 };

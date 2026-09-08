@@ -9,6 +9,7 @@ const express = require('express');
 const Anthropic = require('@anthropic-ai/sdk');
 const persona = require('./assets/js/persona.js');
 const db = require('./db.js');
+const microsoft = require('./microsoft.js');
 
 const PORT = process.env.PORT || 3000;
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5';
@@ -18,6 +19,9 @@ if (!process.env.ANTHROPIC_API_KEY) {
 }
 if (!process.env.DATABASE_URL) {
   console.warn('[jarvis] DATABASE_URL is not set — the to-do list will not be saved. See README.');
+}
+if (!microsoft.isConfigured()) {
+  console.warn('[jarvis] Microsoft Graph is not configured — set MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_REDIRECT_URI to enable Outlook.');
 }
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -97,6 +101,29 @@ const tools = [
     description: "List all saved future-project / business ideas, with which business each belongs to (if any).",
     input_schema: { type: 'object', properties: {} },
   },
+  {
+    name: 'get_calendar_events',
+    description:
+      "Get the user's upcoming Outlook calendar events. If not connected yet, returns an error explaining how to connect.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        days_ahead: { type: 'integer', description: 'How many days ahead to look from now. 1 covers roughly today, 7 covers the coming week. Default 1.' },
+      },
+    },
+  },
+  {
+    name: 'get_recent_emails',
+    description:
+      "Get the user's recent Outlook inbox emails (subject, sender, preview, read status). If not connected yet, returns an error explaining how to connect.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        count: { type: 'integer', description: 'How many recent emails to fetch. Default 10.' },
+        unread_only: { type: 'boolean', description: 'If true, only unread emails. Default false.' },
+      },
+    },
+  },
 ];
 
 async function runTool(name, input) {
@@ -121,6 +148,32 @@ async function runTool(name, input) {
       return { ok: true, idea: await db.addIdea(input.text, input.business) };
     case 'list_ideas':
       return { ok: true, ideas: await db.listIdeas() };
+    case 'get_calendar_events': {
+      if (!microsoft.isConfigured()) {
+        return { ok: false, error: 'Outlook integration is not set up on the server yet.' };
+      }
+      if (!(await microsoft.isConnected())) {
+        return { ok: false, error: 'Outlook is not connected yet — the user needs to visit /auth/microsoft/login once to connect it.' };
+      }
+      try {
+        return { ok: true, events: await microsoft.getCalendarEvents(input.days_ahead) };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
+    case 'get_recent_emails': {
+      if (!microsoft.isConfigured()) {
+        return { ok: false, error: 'Outlook integration is not set up on the server yet.' };
+      }
+      if (!(await microsoft.isConnected())) {
+        return { ok: false, error: 'Outlook is not connected yet — the user needs to visit /auth/microsoft/login once to connect it.' };
+      }
+      try {
+        return { ok: true, emails: await microsoft.getRecentEmails(input.count, input.unread_only) };
+      } catch (err) {
+        return { ok: false, error: err.message };
+      }
+    }
     default:
       return { ok: false, error: `unknown tool ${name}` };
   }
@@ -319,6 +372,45 @@ app.delete('/api/todos/:id', async (req, res) => {
   } catch (err) {
     console.error('[jarvis] /api/todos/:id error:', err.message);
     res.status(500).json({ error: 'failed to delete' });
+  }
+});
+
+// ---------- Microsoft Outlook connection (one-time browser flow) ----------
+app.get('/auth/microsoft/login', (req, res) => {
+  if (!microsoft.isConfigured()) {
+    return res.status(500).send('Outlook integration is not configured on the server (missing MICROSOFT_CLIENT_ID / MICROSOFT_CLIENT_SECRET / MICROSOFT_REDIRECT_URI).');
+  }
+  res.redirect(microsoft.getAuthUrl());
+});
+
+app.get('/auth/microsoft/callback', async (req, res) => {
+  const { code, error, error_description: errorDescription } = req.query;
+  if (error) {
+    return res.status(400).send(`Microsoft sign-in failed: ${errorDescription || error}`);
+  }
+  if (!code) {
+    return res.status(400).send('No authorization code received from Microsoft.');
+  }
+  try {
+    await microsoft.exchangeCodeForToken(code);
+    res.send('<h2>Outlook connected.</h2><p>You can close this tab and go back to JARVIS.</p>');
+  } catch (err) {
+    console.error('[jarvis] Microsoft token exchange failed:', err.message);
+    res.status(500).send(`Failed to connect Outlook: ${err.message}`);
+  }
+});
+
+app.get('/api/connections', async (req, res) => {
+  try {
+    res.json({
+      microsoft: {
+        configured: microsoft.isConfigured(),
+        connected: await microsoft.isConnected(),
+      },
+    });
+  } catch (err) {
+    console.error('[jarvis] /api/connections error:', err.message);
+    res.status(500).json({ error: 'failed to check connections' });
   }
 });
 
