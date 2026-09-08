@@ -15,10 +15,10 @@
 
     const svgNS = 'http://www.w3.org/2000/svg';
     const bands = [
-      { count: 18, rMin: 60, rMax: 92, dotMin: 1.0, dotMax: 2.2, layerClass: 'particle-layer-1', op: [0.5, 1] },
-      { count: 24, rMin: 98, rMax: 138, dotMin: 0.8, dotMax: 1.8, layerClass: 'particle-layer-2', op: [0.35, 0.85] },
-      { count: 30, rMin: 144, rMax: 182, dotMin: 0.6, dotMax: 1.4, layerClass: 'particle-layer-3', op: [0.25, 0.7] },
-      { count: 20, rMin: 186, rMax: 196, dotMin: 0.4, dotMax: 1.0, layerClass: 'particle-layer-4', op: [0.15, 0.45] },
+      { count: 26, rMin: 60, rMax: 92, dotMin: 1.0, dotMax: 2.4, layerClass: 'particle-layer-1', op: [0.5, 1], amberChance: 0.05 },
+      { count: 36, rMin: 98, rMax: 138, dotMin: 0.8, dotMax: 2.0, layerClass: 'particle-layer-2', op: [0.35, 0.9], amberChance: 0.28 },
+      { count: 46, rMin: 144, rMax: 182, dotMin: 0.6, dotMax: 1.6, layerClass: 'particle-layer-3', op: [0.3, 0.75], amberChance: 0.48 },
+      { count: 34, rMin: 186, rMax: 198, dotMin: 0.4, dotMax: 1.2, layerClass: 'particle-layer-4', op: [0.2, 0.5], amberChance: 0.6 },
     ];
 
     bands.forEach((band) => {
@@ -33,7 +33,7 @@
         dot.setAttribute('cx', x.toFixed(1));
         dot.setAttribute('cy', y.toFixed(1));
         dot.setAttribute('r', (band.dotMin + Math.random() * (band.dotMax - band.dotMin)).toFixed(2));
-        const isAmber = Math.random() < 0.12;
+        const isAmber = Math.random() < band.amberChance;
         dot.setAttribute('class', `core-particle${isAmber ? ' amber' : ''}`);
         const baseOp = (band.op[0] + Math.random() * (band.op[1] - band.op[0])).toFixed(2);
         dot.style.setProperty('--base-op', baseOp);
