@@ -5,6 +5,46 @@
 (function () {
   const GAUGE_CIRCUMFERENCE = 2 * Math.PI * 52; // matches r=52 in the SVG gauges
 
+  // ---------- Reactor core: spinning particle field ----------
+  // Replaces the old clean HUD rings with layered bands of small dots that
+  // orbit the core at different speeds/directions, like a swirling star
+  // field around a central glow.
+  function generateCoreParticles() {
+    const tickGroup = document.querySelector('.tick-group');
+    if (!tickGroup) return;
+
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const bands = [
+      { count: 18, rMin: 60, rMax: 92, dotMin: 1.0, dotMax: 2.2, layerClass: 'particle-layer-1', op: [0.5, 1] },
+      { count: 24, rMin: 98, rMax: 138, dotMin: 0.8, dotMax: 1.8, layerClass: 'particle-layer-2', op: [0.35, 0.85] },
+      { count: 30, rMin: 144, rMax: 182, dotMin: 0.6, dotMax: 1.4, layerClass: 'particle-layer-3', op: [0.25, 0.7] },
+      { count: 20, rMin: 186, rMax: 196, dotMin: 0.4, dotMax: 1.0, layerClass: 'particle-layer-4', op: [0.15, 0.45] },
+    ];
+
+    bands.forEach((band) => {
+      const g = document.createElementNS(svgNS, 'g');
+      g.setAttribute('class', `particle-layer ${band.layerClass}`);
+      for (let i = 0; i < band.count; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const radius = band.rMin + Math.random() * (band.rMax - band.rMin);
+        const x = 200 + radius * Math.cos(angle);
+        const y = 200 + radius * Math.sin(angle);
+        const dot = document.createElementNS(svgNS, 'circle');
+        dot.setAttribute('cx', x.toFixed(1));
+        dot.setAttribute('cy', y.toFixed(1));
+        dot.setAttribute('r', (band.dotMin + Math.random() * (band.dotMax - band.dotMin)).toFixed(2));
+        const isAmber = Math.random() < 0.12;
+        dot.setAttribute('class', `core-particle${isAmber ? ' amber' : ''}`);
+        const baseOp = (band.op[0] + Math.random() * (band.op[1] - band.op[0])).toFixed(2);
+        dot.style.setProperty('--base-op', baseOp);
+        dot.style.animationDuration = `${(2.2 + Math.random() * 3).toFixed(1)}s`;
+        dot.style.animationDelay = `-${(Math.random() * 4).toFixed(1)}s`;
+        g.appendChild(dot);
+      }
+      tickGroup.appendChild(g);
+    });
+  }
+
   // ---------- Clock ----------
   function tickClock() {
     const now = new Date();
@@ -600,6 +640,7 @@
 
   // ---------- Boot sequence ----------
   function init() {
+    generateCoreParticles();
     tickClock();
     tickUptime();
     refreshStatus();
