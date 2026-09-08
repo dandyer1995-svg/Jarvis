@@ -257,6 +257,7 @@
         ul.appendChild(li);
       });
       card.appendChild(ul);
+      card.addEventListener('click', () => openProjectModal(p.id));
       projectList.appendChild(card);
     });
   }
@@ -270,6 +271,148 @@
     } catch (err) {
       // silent — panel just keeps showing its last known state
     }
+  }
+
+  // ---------- Project detail modal ----------
+  const projectModalOverlay = document.getElementById('projectModalOverlay');
+  const projectModalTitle = document.getElementById('projectModalTitle');
+  const projectModalProgress = document.getElementById('projectModalProgress');
+  const projectModalMilestones = document.getElementById('projectModalMilestones');
+  const projectModalClose = document.getElementById('projectModalClose');
+  const projectModalAddForm = document.getElementById('projectModalAddForm');
+  const projectModalAddText = document.getElementById('projectModalAddText');
+  const projectModalAddDate = document.getElementById('projectModalAddDate');
+  let currentProjectId = null;
+
+  async function openProjectModal(id) {
+    currentProjectId = id;
+    projectModalOverlay.hidden = false;
+    await loadProjectIntoModal(id);
+  }
+
+  function closeProjectModal() {
+    projectModalOverlay.hidden = true;
+    currentProjectId = null;
+  }
+
+  async function loadProjectIntoModal(id) {
+    try {
+      const res = await fetch(`/api/projects/${id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      renderProjectModal(data.project);
+    } catch (err) {
+      // silent
+    }
+  }
+
+  function renderProjectModal(project) {
+    projectModalTitle.textContent = project.name;
+    const doneCount = project.milestones.filter((m) => m.done).length;
+    projectModalProgress.textContent = `${doneCount}/${project.milestones.length} complete`;
+
+    projectModalMilestones.innerHTML = '';
+    if (!project.milestones.length) {
+      const li = document.createElement('li');
+      li.className = 'modal-empty';
+      li.textContent = 'No milestones yet — add one below.';
+      projectModalMilestones.appendChild(li);
+      return;
+    }
+
+    project.milestones.forEach((m) => {
+      const li = document.createElement('li');
+      li.className = urgencyOf(m);
+
+      const check = document.createElement('button');
+      check.type = 'button';
+      check.className = 'modal-check' + (m.done ? ' checked' : '');
+      check.textContent = m.done ? '✓' : '';
+      check.addEventListener('click', () => toggleMilestone(m.id, !m.done));
+
+      const text = document.createElement('span');
+      text.className = 'modal-milestone-text';
+      text.textContent = m.text;
+
+      li.appendChild(check);
+      li.appendChild(text);
+
+      if (m.due_date) {
+        const due = document.createElement('span');
+        due.className = 'modal-milestone-due';
+        due.textContent = formatDueDate(m.due_date);
+        li.appendChild(due);
+      }
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'modal-delete';
+      del.textContent = '✕';
+      del.title = 'Delete';
+      del.addEventListener('click', () => deleteMilestone(m.id));
+      li.appendChild(del);
+
+      projectModalMilestones.appendChild(li);
+    });
+  }
+
+  async function toggleMilestone(id, done) {
+    try {
+      await fetch(`/api/todos/${id}/done`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ done }),
+      });
+    } catch (err) {
+      // silent
+    }
+    if (currentProjectId != null) await loadProjectIntoModal(currentProjectId);
+    refreshProjects();
+    refreshTodos();
+  }
+
+  async function deleteMilestone(id) {
+    try {
+      await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+    } catch (err) {
+      // silent
+    }
+    if (currentProjectId != null) await loadProjectIntoModal(currentProjectId);
+    refreshProjects();
+    refreshTodos();
+  }
+
+  if (projectModalClose) projectModalClose.addEventListener('click', closeProjectModal);
+  if (projectModalOverlay) {
+    projectModalOverlay.addEventListener('click', (e) => {
+      if (e.target === projectModalOverlay) closeProjectModal();
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !projectModalOverlay.hidden) closeProjectModal();
+  });
+
+  if (projectModalAddForm) {
+    projectModalAddForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = projectModalAddText.value.trim();
+      if (!text || currentProjectId == null) return;
+      const dueDate = projectModalAddDate.value || null;
+      try {
+        await fetch(`/api/projects/${currentProjectId}/milestones`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, due_date: dueDate }),
+        });
+        projectModalAddText.value = '';
+        projectModalAddDate.value = '';
+        await loadProjectIntoModal(currentProjectId);
+        refreshProjects();
+        refreshTodos();
+      } catch (err) {
+        // silent
+      }
+    });
   }
 
   // Spoken once, when the dashboard is opened — not repeated on every
@@ -321,6 +464,10 @@
   const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
   let recognition = null;
   let listening = false;
+  let manualStop = false;
+  let finalTranscript = '';
+  let micTimeoutId = null;
+  const MIC_MAX_SESSION_MS = 60000; // hard safety cap so the mic never stays open forever
 
   if (micBtn) {
     if (!SpeechRecognitionCtor) {
@@ -329,8 +476,8 @@
     } else {
       recognition = new SpeechRecognitionCtor();
       recognition.lang = 'en-GB';
-      recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.continuous = true; // don't stop the instant there's a pause
+      recognition.interimResults = true; // show live text so you know it's still listening
 
       recognition.onstart = () => {
         listening = true;
@@ -339,26 +486,63 @@
       };
 
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        chatInput.value = transcript;
-        chatForm.requestSubmit();
+        let interim = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += `${transcript} `;
+          } else {
+            interim += transcript;
+          }
+        }
+        chatInput.value = (finalTranscript + interim).trim();
       };
 
       recognition.onerror = (event) => {
+        // "no-speech" fires ~5s in if it hasn't heard anything yet — that's
+        // not a real error, it's Chrome giving up too early. Swallow it and
+        // keep the mic open rather than dropping the session.
+        if (event.error === 'no-speech') return;
         pushLog(`Voice input error: ${event.error}`);
       };
 
       recognition.onend = () => {
+        // Chrome sometimes ends the session on its own even in continuous
+        // mode. If the user didn't ask to stop, just pick it back up.
+        if (listening && !manualStop) {
+          try {
+            recognition.start();
+            return;
+          } catch (err) {
+            // fall through to full stop below
+          }
+        }
         listening = false;
+        manualStop = false;
         micBtn.classList.remove('listening');
+        clearTimeout(micTimeoutId);
+        const heard = finalTranscript.trim();
+        finalTranscript = '';
+        if (heard) {
+          chatInput.value = heard;
+          chatForm.requestSubmit();
+        }
       };
 
       micBtn.addEventListener('click', () => {
         if (listening) {
+          manualStop = true;
           recognition.stop();
         } else {
+          manualStop = false;
+          finalTranscript = '';
           speechSynthesis.cancel(); // stop JARVIS talking before we listen
           recognition.start();
+          clearTimeout(micTimeoutId);
+          micTimeoutId = setTimeout(() => {
+            manualStop = true;
+            recognition.stop();
+          }, MIC_MAX_SESSION_MS);
         }
       });
     }

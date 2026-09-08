@@ -195,6 +195,61 @@ app.get('/api/projects', async (req, res) => {
   }
 });
 
+app.get('/api/projects/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) return res.status(400).json({ error: 'invalid id' });
+  try {
+    const project = await db.getProject(id);
+    if (!project) return res.status(404).json({ error: 'not found' });
+    res.json({ project });
+  } catch (err) {
+    console.error('[jarvis] /api/projects/:id error:', err.message);
+    res.status(500).json({ error: 'failed to load project' });
+  }
+});
+
+app.post('/api/projects/:id/milestones', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const { text, due_date } = req.body || {};
+  if (Number.isNaN(id)) return res.status(400).json({ error: 'invalid id' });
+  if (typeof text !== 'string' || !text.trim()) {
+    return res.status(400).json({ error: 'text is required' });
+  }
+  try {
+    const milestone = await db.addMilestoneToProject(id, text.trim(), due_date || null);
+    res.json({ milestone });
+  } catch (err) {
+    console.error('[jarvis] /api/projects/:id/milestones error:', err.message);
+    res.status(500).json({ error: 'failed to add milestone' });
+  }
+});
+
+app.patch('/api/todos/:id/done', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const { done } = req.body || {};
+  if (Number.isNaN(id)) return res.status(400).json({ error: 'invalid id' });
+  try {
+    const item = await db.setTodoDone(id, !!done);
+    if (!item) return res.status(404).json({ error: 'not found' });
+    res.json({ item });
+  } catch (err) {
+    console.error('[jarvis] /api/todos/:id/done error:', err.message);
+    res.status(500).json({ error: 'failed to update' });
+  }
+});
+
+app.delete('/api/todos/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) return res.status(400).json({ error: 'invalid id' });
+  try {
+    const removed = await db.removeTodo(id);
+    res.json({ removed });
+  } catch (err) {
+    console.error('[jarvis] /api/todos/:id error:', err.message);
+    res.status(500).json({ error: 'failed to delete' });
+  }
+});
+
 db.init()
   .then(() => console.log('[jarvis] todos table ready'))
   .catch((err) => console.error('[jarvis] failed to set up the database:', err.message));

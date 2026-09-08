@@ -104,6 +104,34 @@ async function listProjects() {
   }));
 }
 
+async function setTodoDone(id, done) {
+  const { rows } = await pool.query(
+    'UPDATE todos SET done = $2 WHERE id = $1 RETURNING id, text, done, project_id, due_date',
+    [id, done]
+  );
+  return rows[0] || null;
+}
+
+async function addMilestoneToProject(projectId, text, dueDate) {
+  const { rows } = await pool.query(
+    'INSERT INTO todos (text, project_id, due_date) VALUES ($1, $2, $3) RETURNING id, text, done, project_id, due_date',
+    [text, projectId, dueDate || null]
+  );
+  return rows[0];
+}
+
+async function getProject(id) {
+  const proj = await pool.query('SELECT id, name FROM projects WHERE id = $1', [id]);
+  if (!proj.rows[0]) return null;
+  const milestones = await pool.query(
+    `SELECT id, text, done, project_id, due_date FROM todos
+     WHERE project_id = $1
+     ORDER BY (due_date IS NULL), due_date ASC, id ASC`,
+    [id]
+  );
+  return { ...proj.rows[0], milestones: milestones.rows };
+}
+
 module.exports = {
   init,
   listTodos,
@@ -113,5 +141,8 @@ module.exports = {
   findOrCreateProject,
   addMilestone,
   listProjects,
+  setTodoDone,
+  addMilestoneToProject,
+  getProject,
   isConfigured: !!pool,
 };

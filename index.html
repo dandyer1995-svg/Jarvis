@@ -168,6 +168,23 @@
   </main>
 </div>
 
+<!-- ===== PROJECT DETAIL MODAL ===== -->
+<div class="modal-overlay" id="projectModalOverlay" hidden>
+  <div class="modal">
+    <button type="button" class="modal-close" id="projectModalClose" aria-label="Close">✕</button>
+    <div class="modal-head">
+      <h2 id="projectModalTitle">Project</h2>
+      <span class="modal-progress" id="projectModalProgress"></span>
+    </div>
+    <ul class="modal-milestone-list" id="projectModalMilestones"></ul>
+    <form class="modal-add-form" id="projectModalAddForm">
+      <input type="text" id="projectModalAddText" autocomplete="off" placeholder="New milestone...">
+      <input type="date" id="projectModalAddDate">
+      <button type="submit">Add</button>
+    </form>
+  </div>
+</div>
+
 <script src="assets/js/persona.js"></script>
 <script src="assets/js/app.js"></script>
 </body>

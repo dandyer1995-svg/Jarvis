@@ -82,6 +82,90 @@
 .milestone.overdue .milestone-due{ color:var(--red); font-weight:600; }
 .milestone.warn .milestone-due{ color:var(--amber); }
 .project-empty{ color:var(--text-dim); font-style:italic; font-size:12px; }
+.project-card{ cursor:pointer; transition:.15s; }
+.project-card:hover{ border-color:var(--cyan); box-shadow:var(--glow); }
+
+.modal-overlay{
+  position:fixed; inset:0;
+  background:rgba(3,8,12,.75);
+  backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center;
+  z-index:100;
+  padding:20px;
+}
+.modal-overlay[hidden]{ display:none; }
+.modal{
+  position:relative;
+  width:100%; max-width:520px; max-height:80vh;
+  overflow-y:auto;
+  background:var(--bg-1);
+  border:1px solid var(--panel-border);
+  border-radius:10px;
+  box-shadow:0 0 40px rgba(0,0,0,.6), var(--glow);
+  padding:22px 24px;
+}
+.modal-close{
+  position:absolute; top:14px; right:14px;
+  background:transparent; border:1px solid var(--panel-border);
+  color:var(--text-dim); width:26px; height:26px; border-radius:4px;
+  cursor:pointer; line-height:1; font-size:13px;
+  transition:.15s;
+}
+.modal-close:hover{ color:var(--cyan); border-color:var(--cyan); }
+.modal-head{
+  display:flex; justify-content:space-between; align-items:baseline;
+  margin-bottom:16px; padding-right:30px;
+}
+.modal-head h2{
+  margin:0; color:var(--text); font-size:16px; letter-spacing:.04em;
+  text-shadow:var(--glow);
+}
+.modal-progress{ color:var(--text-dim); font-size:12px; }
+.modal-milestone-list{ list-style:none; margin:0 0 16px; padding:0; display:flex; flex-direction:column; gap:8px; }
+.modal-milestone-list li{
+  display:flex; align-items:center; gap:10px;
+  padding:6px 4px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  font-size:13px;
+}
+.modal-milestone-list li.overdue .modal-milestone-text{ color:var(--red); }
+.modal-milestone-list li.warn .modal-milestone-due{ color:var(--amber); }
+.modal-milestone-list li.overdue .modal-milestone-due{ color:var(--red); font-weight:600; }
+.modal-milestone-list li.done .modal-milestone-text{ color:var(--text-dim); text-decoration:line-through; }
+.modal-check{
+  width:15px; height:15px; flex:none;
+  border:1px solid var(--cyan-dim); border-radius:3px;
+  cursor:pointer; background:transparent;
+  display:inline-flex; align-items:center; justify-content:center;
+  padding:0; color:transparent;
+}
+.modal-check.checked{ background:var(--cyan); border-color:var(--cyan); box-shadow:0 0 6px var(--cyan); color:#03080c; font-size:11px; }
+.modal-milestone-text{ flex:1; color:var(--text); }
+.modal-milestone-due{ color:var(--text-dim); font-size:11px; white-space:nowrap; }
+.modal-delete{
+  background:transparent; border:none; color:var(--text-dim);
+  cursor:pointer; font-size:13px; padding:2px 4px; line-height:1;
+  transition:.15s;
+}
+.modal-delete:hover{ color:var(--red); }
+.modal-add-form{ display:flex; gap:6px; }
+.modal-add-form input[type="text"]{
+  flex:1; background:transparent; border:1px solid var(--panel-border);
+  color:var(--text); padding:7px 9px; border-radius:4px; font-size:12px;
+}
+.modal-add-form input[type="date"]{
+  background:transparent; border:1px solid var(--panel-border);
+  color:var(--text); padding:6px 8px; border-radius:4px; font-size:12px;
+  color-scheme:dark;
+}
+.modal-add-form input:focus{ outline:none; border-color:var(--cyan); box-shadow:0 0 8px rgba(95,224,255,.4); }
+.modal-add-form button{
+  background:transparent; border:1px solid var(--cyan-dim); color:var(--cyan);
+  padding:7px 14px; border-radius:4px; cursor:pointer; font-size:12px;
+  transition:.2s;
+}
+.modal-add-form button:hover{ background:var(--cyan); color:#03080c; box-shadow:var(--glow); }
+.modal-empty{ color:var(--text-dim); font-style:italic; font-size:12px; }
 *{box-sizing:border-box;}
 
 html,body{
