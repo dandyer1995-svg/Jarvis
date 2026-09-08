@@ -79,6 +79,24 @@ const tools = [
     description: "List every project along with its milestones, due dates, and completion status.",
     input_schema: { type: 'object', properties: {} },
   },
+  {
+    name: 'add_idea',
+    description:
+      "Save a future project or business idea — something not yet committed to, with no deadline. Separate from the active to-do list and projects. Optionally tag it to one of the user's businesses (Yesss Electrical, VA Power, Saltwood & Co); omit for a general/personal idea.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        text: { type: 'string', description: 'The idea, in a short sentence' },
+        business: { type: 'string', description: 'e.g. "Yesss Electrical", "VA Power", "Saltwood & Co" — omit if not business-specific' },
+      },
+      required: ['text'],
+    },
+  },
+  {
+    name: 'list_ideas',
+    description: "List all saved future-project / business ideas, with which business each belongs to (if any).",
+    input_schema: { type: 'object', properties: {} },
+  },
 ];
 
 async function runTool(name, input) {
@@ -99,6 +117,10 @@ async function runTool(name, input) {
     }
     case 'list_projects':
       return { ok: true, projects: await db.listProjects() };
+    case 'add_idea':
+      return { ok: true, idea: await db.addIdea(input.text, input.business) };
+    case 'list_ideas':
+      return { ok: true, ideas: await db.listIdeas() };
     default:
       return { ok: false, error: `unknown tool ${name}` };
   }
@@ -196,6 +218,42 @@ app.get('/api/businesses', async (req, res) => {
   } catch (err) {
     console.error('[jarvis] /api/businesses error:', err.message);
     res.status(500).json({ error: 'failed to load businesses' });
+  }
+});
+
+app.get('/api/ideas', async (req, res) => {
+  try {
+    const ideas = await db.listIdeas();
+    res.json({ ideas });
+  } catch (err) {
+    console.error('[jarvis] /api/ideas error:', err.message);
+    res.status(500).json({ error: 'failed to load ideas' });
+  }
+});
+
+app.post('/api/ideas', async (req, res) => {
+  const { text, business } = req.body || {};
+  if (typeof text !== 'string' || !text.trim()) {
+    return res.status(400).json({ error: 'text is required' });
+  }
+  try {
+    const idea = await db.addIdea(text.trim(), business);
+    res.json({ idea });
+  } catch (err) {
+    console.error('[jarvis] /api/ideas POST error:', err.message);
+    res.status(500).json({ error: 'failed to add idea' });
+  }
+});
+
+app.delete('/api/ideas/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (Number.isNaN(id)) return res.status(400).json({ error: 'invalid id' });
+  try {
+    const removed = await db.removeIdea(id);
+    res.json({ removed });
+  } catch (err) {
+    console.error('[jarvis] /api/ideas/:id error:', err.message);
+    res.status(500).json({ error: 'failed to delete' });
   }
 });
 

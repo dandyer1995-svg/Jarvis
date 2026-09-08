@@ -189,6 +189,7 @@
     refreshTodos();
     refreshProjects();
     refreshBusinesses();
+    refreshIdeas();
   });
 
   // ---------- To-Do list ----------
@@ -272,9 +273,123 @@
       const data = await res.json();
       businessList = data.businesses || [];
       renderTodoTabs();
+      renderIdeaTabs();
     } catch (err) {
       // silent
     }
+  }
+
+  // ---------- Ideas (future projects / business ideas) ----------
+  const ideaList = document.getElementById('ideaList');
+  const ideaTabs = document.getElementById('ideaTabs');
+  const ideaAddForm = document.getElementById('ideaAddForm');
+  const ideaAddText = document.getElementById('ideaAddText');
+  let allIdeas = [];
+  let activeIdeaTab = 'all'; // 'all' | 'none' | a business id
+
+  function renderIdeas(items) {
+    if (!ideaList) return;
+    ideaList.innerHTML = '';
+    if (!items.length) {
+      const li = document.createElement('li');
+      li.className = 'todo-empty';
+      li.textContent = 'No ideas on file yet.';
+      ideaList.appendChild(li);
+      return;
+    }
+    items.forEach((idea) => {
+      const li = document.createElement('li');
+      const bullet = document.createElement('span');
+      bullet.className = 'idea-bullet';
+      bullet.textContent = '✦';
+      const text = document.createElement('span');
+      text.className = 'idea-text';
+      text.textContent = idea.text;
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'idea-delete';
+      del.textContent = '✕';
+      del.title = 'Delete';
+      del.addEventListener('click', () => deleteIdea(idea.id));
+      li.appendChild(bullet);
+      li.appendChild(text);
+      li.appendChild(del);
+      ideaList.appendChild(li);
+    });
+  }
+
+  function applyIdeaFilter() {
+    let filtered = allIdeas;
+    if (activeIdeaTab === 'none') {
+      filtered = allIdeas.filter((i) => !i.business_id);
+    } else if (activeIdeaTab !== 'all') {
+      filtered = allIdeas.filter((i) => i.business_id === activeIdeaTab);
+    }
+    renderIdeas(filtered);
+  }
+
+  function renderIdeaTabs() {
+    if (!ideaTabs) return;
+    ideaTabs.innerHTML = '';
+    const tabs = [
+      { id: 'all', label: 'All' },
+      { id: 'none', label: 'General' },
+      ...businessList.map((b) => ({ id: b.id, label: b.name })),
+    ];
+    tabs.forEach((t) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'todo-tab' + (activeIdeaTab === t.id ? ' active' : '');
+      btn.textContent = t.label;
+      btn.addEventListener('click', () => {
+        activeIdeaTab = t.id;
+        renderIdeaTabs();
+        applyIdeaFilter();
+      });
+      ideaTabs.appendChild(btn);
+    });
+  }
+
+  async function refreshIdeas() {
+    try {
+      const res = await fetch('/api/ideas');
+      if (!res.ok) return;
+      const data = await res.json();
+      allIdeas = data.ideas || [];
+      applyIdeaFilter();
+    } catch (err) {
+      // silent
+    }
+  }
+
+  async function deleteIdea(id) {
+    try {
+      await fetch(`/api/ideas/${id}`, { method: 'DELETE' });
+    } catch (err) {
+      // silent
+    }
+    refreshIdeas();
+  }
+
+  if (ideaAddForm) {
+    ideaAddForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const text = ideaAddText.value.trim();
+      if (!text) return;
+      // Quick-add from the dashboard always goes in as general; use chat
+      // ("save an idea for VA Power...") to tag one to a business.
+      try {
+        await fetch('/api/ideas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        });
+        ideaAddText.value = '';
+        refreshIdeas();
+      } catch (err) {
+        // silent
+      }
+    });
   }
 
   // ---------- Projects & milestones ----------
@@ -647,6 +762,7 @@
     refreshBusinesses();
     refreshTodos();
     refreshProjects();
+    refreshIdeas();
     pushLog('System boot sequence complete.');
 
     setInterval(tickClock, 1000);
@@ -654,6 +770,7 @@
     setInterval(refreshStatus, 2500);
     setInterval(refreshTodos, 15000);
     setInterval(refreshProjects, 15000);
+    setInterval(refreshIdeas, 15000);
     setInterval(() => {
       pushLog(logMessages[Math.floor(Math.random() * logMessages.length)]);
     }, 6000);

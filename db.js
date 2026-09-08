@@ -37,6 +37,14 @@ async function init() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS ideas (
+      id SERIAL PRIMARY KEY,
+      text TEXT NOT NULL,
+      business_id INTEGER,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
   // Case-insensitive uniqueness so "Cabin build" and "cabin Build" (or
   // "yesss electrical" spoken lowercase) resolve to the same row.
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS projects_name_lower_idx ON projects (LOWER(name))`);
@@ -45,6 +53,7 @@ async function init() {
   await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE`);
   await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS due_date DATE`);
   await pool.query(`ALTER TABLE todos ADD COLUMN IF NOT EXISTS business_id INTEGER REFERENCES businesses(id) ON DELETE SET NULL`);
+  await pool.query(`ALTER TABLE ideas ADD COLUMN IF NOT EXISTS business_id INTEGER REFERENCES businesses(id) ON DELETE SET NULL`);
 
   // Seed the user's known businesses so they show up as tabs immediately,
   // without needing to be created via conversation first.
@@ -109,6 +118,35 @@ async function listBusinesses() {
   if (!pool) return [];
   const { rows } = await pool.query('SELECT id, name FROM businesses ORDER BY id ASC');
   return rows;
+}
+
+async function listIdeas() {
+  if (!pool) return [];
+  const { rows } = await pool.query(`
+    SELECT i.id, i.text, i.business_id, b.name AS business_name
+    FROM ideas i
+    LEFT JOIN businesses b ON b.id = i.business_id
+    ORDER BY i.id DESC
+  `);
+  return rows;
+}
+
+async function addIdea(text, businessName) {
+  let businessId = null;
+  if (businessName) {
+    const biz = await findOrCreateBusiness(businessName);
+    businessId = biz.id;
+  }
+  const { rows } = await pool.query(
+    'INSERT INTO ideas (text, business_id) VALUES ($1, $2) RETURNING id, text, business_id',
+    [text, businessId]
+  );
+  return rows[0];
+}
+
+async function removeIdea(id) {
+  const { rowCount } = await pool.query('DELETE FROM ideas WHERE id = $1', [id]);
+  return rowCount > 0;
 }
 
 async function findOrCreateProject(name) {
@@ -188,5 +226,8 @@ module.exports = {
   getProject,
   findOrCreateBusiness,
   listBusinesses,
+  listIdeas,
+  addIdea,
+  removeIdea,
   isConfigured: !!pool,
 };
