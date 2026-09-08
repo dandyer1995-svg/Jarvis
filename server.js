@@ -317,6 +317,20 @@ app.get('/api/todos', async (req, res) => {
   }
 });
 
+app.post('/api/todos', async (req, res) => {
+  const { text, business } = req.body || {};
+  if (typeof text !== 'string' || !text.trim()) {
+    return res.status(400).json({ error: 'text is required' });
+  }
+  try {
+    const item = await db.addTodo(text.trim(), business);
+    res.json({ item });
+  } catch (err) {
+    console.error('[jarvis] /api/todos POST error:', err.message);
+    res.status(500).json({ error: 'failed to add todo' });
+  }
+});
+
 app.get('/api/businesses', async (req, res) => {
   try {
     const businesses = await db.listBusinesses();

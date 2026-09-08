@@ -101,9 +101,11 @@ async function deleteOAuthToken(provider) {
 async function listTodos() {
   if (!pool) return [];
   const { rows } = await pool.query(`
-    SELECT t.id, t.text, t.done, t.project_id, t.due_date, t.business_id, b.name AS business_name
+    SELECT t.id, t.text, t.done, t.project_id, t.due_date, t.business_id,
+           b.name AS business_name, p.name AS project_name
     FROM todos t
     LEFT JOIN businesses b ON b.id = t.business_id
+    LEFT JOIN projects p ON p.id = t.project_id
     ORDER BY t.done ASC, (t.due_date IS NULL), t.due_date ASC, t.id ASC
   `);
   return rows;

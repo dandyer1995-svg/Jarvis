@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS // To-Do List</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#05070f">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div class="todos-page">
+
+  <header class="todos-header">
+    <div class="brand">
+      <span class="brand-mark">◈</span>
+      <span class="brand-name">J.A.R.V.I.S.</span>
+      <span class="brand-sub">TO-DO LIST</span>
+    </div>
+    <a href="/" class="capture-dashboard-link" title="Back to dashboard">⤢</a>
+  </header>
+
+  <div class="todos-stats" id="todosStats"></div>
+
+  <div class="todo-tabs" id="todosPageTabs"></div>
+
+  <form class="todos-add-form" id="todosAddForm">
+    <input type="text" id="todosAddText" autocomplete="off" placeholder="Add a to-do...">
+    <select id="todosAddBusiness">
+      <option value="">General</option>
+    </select>
+    <button type="submit">Add</button>
+  </form>
+
+  <ul class="todos-page-list" id="todosPageList">
+    <li class="todo-empty">Loading…</li>
+  </ul>
+
+</div>
+
+<script src="assets/js/persona.js"></script>
+<script src="assets/js/todos.js"></script>
+</body>
+</html>
