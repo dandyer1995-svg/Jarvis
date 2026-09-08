@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0">
+<title>JARVIS // Quick Capture</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#05070f">
+<!-- iOS home-screen support (Safari doesn't read manifest.json) -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JARVIS">
+<link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="capture-body">
+
+<div class="scanlines"></div>
+<div class="vignette"></div>
+
+<div class="capture-wrap">
+  <div class="capture-header">
+    <span class="brand-mark">◈</span>
+    <span class="capture-brand-name">QUICK CAPTURE</span>
+    <a href="/" class="capture-dashboard-link" title="Full dashboard">⤢</a>
+  </div>
+
+  <div class="capture-log" id="captureLog">
+    <div class="capture-msg capture-msg-ai">
+      Ready when you are, sir. Speak or type a to-do or an idea — I'll file it
+      for review later.
+    </div>
+  </div>
+
+  <button type="button" id="captureMicBtn" class="capture-mic-btn" aria-label="Voice input">
+    <span class="capture-mic-icon">🎤</span>
+  </button>
+  <div class="capture-mic-hint" id="captureMicHint">Tap to speak</div>
+
+  <form class="capture-form" id="captureForm">
+    <input type="text" id="captureInput" autocomplete="off" placeholder="Or type here...">
+    <button type="submit" class="capture-send-btn">Send</button>
+  </form>
+</div>
+
+<script src="assets/js/persona.js"></script>
+<script src="assets/js/capture.js"></script>
+</body>
+</html>
